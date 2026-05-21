@@ -18,7 +18,6 @@ Zero-copy токенизатор — токены ссылаются на сре
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdint.h>
 
 /* Типы токенов */
 typedef enum {

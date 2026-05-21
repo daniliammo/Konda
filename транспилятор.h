@@ -1,7 +1,6 @@
 #ifndef TOKENIZER_H
 #define TOKENIZER_H
 
-#include <stddef.h>
 #include <stdio.h>
 
 typedef enum {
