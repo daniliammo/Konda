@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O3 -s -fdata-sections -ffunction-sections -flto -fno-stack-protector
+CFLAGS = -Wall -Wextra -O3 -s -fdata-sections -ffunction-sections -flto -fno-stack-protector -std=gnu23
 LDFLAGS = -Wl,--gc-sections
 TARGET = Собранное/Транспилятор
 SRC = основа.c массив_токенов.c токенизатор_лексер.c конвейер.c ввод_вывод.c
