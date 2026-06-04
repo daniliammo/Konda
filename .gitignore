@@ -1,6 +1,16 @@
 # Prerequisites
 *.d
 
+# macOS
+.DS_Store
+
+# Konda build outputs
+Собранное/
+Собранное
+вывод/
+*.c.tmp
+*.log
+
 # Object files
 *.o
 *.ko

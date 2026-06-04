@@ -1,13 +1,24 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -O3 -s -fdata-sections -ffunction-sections -flto -fno-stack-protector -std=gnu23
-LDFLAGS = -Wl,--gc-sections
+CC ?= cc
+UNAME_S := $(shell uname -s)
+
+CFLAGS ?= -Wall -Wextra -O2 -std=gnu23
+LDFLAGS ?=
+
+ifeq ($(UNAME_S),Linux)
+LDFLAGS += -Wl,--gc-sections
+endif
+
 TARGET = Собранное/Транспилятор
 SRC = основа.c массив_токенов.c токенизатор_лексер.c конвейер.c ввод_вывод.c транспиляция.c
 OBJ = $(SRC:.c=.o)
 
 all: $(TARGET)
 
+test: $(TARGET)
+	sh tests/run.sh
+
 $(TARGET): $(OBJ)
+	mkdir -p Собранное
 	$(CC) $(CFLAGS) $(OBJ) $(LDFLAGS) -o $(TARGET)
 
 %.o: %.c транспилятор.h
@@ -17,4 +28,4 @@ clean:
 	rm -f $(TARGET) $(OBJ)
 
 install: $(TARGET)
-	install -D -m 755 $(TARGET) /bin/$(TARGET)
+	install -m 755 $(TARGET) /usr/local/bin/konda
