@@ -51,7 +51,8 @@ static int байты_равны(const char *a, size_t la, const char *b, size_t
     return la == lb && memcmp(a, b, la) == 0;
 }
 
-static int идентификатор_равен(const Токен *t, const char *текст)
+// Пока не используется в кодогене, но пригодится при переходе на AST.
+[[maybe_unused]] static int идентификатор_равен(const Токен *t, const char *текст)
 {
     if (t->тип != ТОКЕН_ИДЕНТИФИКАТОР) {
         return 0;
