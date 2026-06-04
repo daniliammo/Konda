@@ -767,7 +767,7 @@ int транспилировать_в_си(МассивТокенов токен
 int скомпилировать_си(const char *путь_си, const char *путь_исполняемого)
 {
     char команда[2048];
-    snprintf(команда, sizeof(команда), "/bin/cc -std=c23 -Wall -Wextra -O2 -o \"%s.elf\" \"%s\"",
+    snprintf(команда, sizeof(команда), "/bin/cc -std=gnu23 -Wall -Wextra -O2 -o \"%s.elf\" \"%s\"",
              путь_исполняемого, путь_си);
     printf("%s\n", команда);
     int код = system(команда);
