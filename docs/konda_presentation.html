@@ -155,6 +155,32 @@
     box-shadow: 0 8px 20px rgba(142,45,226,.3);
   }
   .tok.p { background: #ff6a88; box-shadow: 0 8px 20px rgba(255,106,136,.3); }
+
+  /* дерево AST */
+  .tree {
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 40px; line-height: 1.4; white-space: pre;
+    background: #1b1830; color: #cfcbe8;
+    border-radius: 18px; padding: 26px 34px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.25);
+    flex: 1; display: flex; align-items: center; justify-content: center;
+  }
+  .tree .op { color: #ff7eb6; font-weight: 700; }
+  .tree .nu { color: #ffc777; font-weight: 700; }
+
+  /* карточки дорожной карты */
+  .colcard {
+    background: #fff; border-radius: 20px; padding: 30px 34px; flex: 1;
+    box-shadow: 0 16px 40px rgba(90,60,140,.14);
+  }
+  .colcard.future { background: linear-gradient(135deg, #f3ecff 0%, #fce9f3 100%); }
+  .colcard h3 { font-size: 32px; margin-bottom: 18px; }
+  .colcard ul { list-style: none; }
+  .colcard ul li {
+    font-size: 23px; line-height: 1.45; margin: 12px 0;
+    padding-left: 28px; position: relative; font-weight: 500;
+  }
+  .colcard ul li::before { content: "•"; position: absolute; left: 4px; color: #8e2de2; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -342,16 +368,85 @@
   <div class="foot"><span>Konda</span><span>12</span></div>
 </section>
 
-<!-- 13. Финал -->
-<section class="slide bg-title">
-  <div class="big-emoji">🚀</div>
-  <h1 style="font-size:80px;">Konda растёт</h1>
-  <div class="lead" style="margin-top:20px; opacity:.92;">
-    Дальше — циклы, проверка типов, больше возможностей.
-    А пока он уже умеет превращать русский текст в настоящую программу.
+<!-- 13. Этапы компиляции (термины) -->
+<section class="slide bg-dark">
+  <h2>Как это устроено «по-взрослому» ⚙️</h2>
+  <div class="lead" style="opacity:.85; margin-bottom:4px;">Тот самый конвейер — но настоящими словами из мира компиляторов:</div>
+  <div class="pipe">
+    <div class="step"><span class="e">🔤</span><span class="t"><b>Лексер</b><br>режет текст<br>на токены</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="e">🧩</span><span class="t"><b>Парсер</b><br>собирает<br>структуру</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="e">🌳</span><span class="t"><b>AST</b><br>дерево<br>программы</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="e">🔍</span><span class="t"><b>Семантика</b><br>проверки:<br>типы, границы</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="e">🔁</span><span class="t"><b>Кодоген</b><br>пишет<br>код на C</span></div>
   </div>
-  <div class="sub" style="font-size:34px; margin-top:36px;"><b>Спасибо за внимание! Вопросы? 🙌</b></div>
+  <div class="sub" style="margin-top:34px; text-align:center;">Konda сейчас в начале этого пути — и постепенно проходит его до конца.</div>
   <div class="foot"><span>Konda</span><span>13</span></div>
+</section>
+
+<!-- 14. Что такое AST -->
+<section class="slide bg-sky">
+  <h2>Что такое AST? 🌳</h2>
+  <div class="lead" style="margin-bottom:4px;"><b>Абстрактное синтаксическое дерево</b> — структура программы в виде дерева.</div>
+  <div class="cols">
+    <div class="col">
+      <div class="label">сейчас: плоская цепочка</div>
+      <div class="code" style="flex:1; display:flex; align-items:center; justify-content:center; font-size:34px;">2 + 3 * 4</div>
+    </div>
+    <div class="arrow">➜</div>
+    <div class="col">
+      <div class="label">дерево: видна структура</div>
+      <div class="tree"><span>    <span class="op">+</span>
+   /   \
+  <span class="nu">2</span>     <span class="op">×</span>
+       /   \
+      <span class="nu">3</span>     <span class="nu">4</span></span></div>
+    </div>
+  </div>
+  <div class="callout">🌳 Дерево само «знает»: умножение ниже по ветке — значит, считается раньше. Это «схема предложения» из слайда про токены, только для кода.</div>
+  <div class="foot"><span>Konda</span><span>14</span></div>
+</section>
+
+<!-- 15. Дорожная карта -->
+<section class="slide bg-cream">
+  <h2>Дорожная карта 🗺️</h2>
+  <div class="cols" style="margin-top:10px;">
+    <div class="colcard">
+      <h3>✅ Уже работает</h3>
+      <ul>
+        <li>лексер и простой парсер</li>
+        <li>генерация кода на C</li>
+        <li>проверка выхода за границы массива</li>
+        <li>ошибки с указанием «строка : колонка»</li>
+        <li>ключевые слова на русском</li>
+      </ul>
+    </div>
+    <div class="colcard future">
+      <h3>🔜 В планах</h3>
+      <ul>
+        <li>полноценный AST вместо «слово за словом»</li>
+        <li>приоритеты операторов как модель выражений</li>
+        <li>семантический анализ: типы и области видимости</li>
+        <li>циклы и возврат значения</li>
+        <li>управление памятью (autofree)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Konda</span><span>15</span></div>
+</section>
+
+<!-- 16. Финал -->
+<section class="slide bg-title">
+  <div class="big-emoji">🙌</div>
+  <h1 style="font-size:84px;">Спасибо!</h1>
+  <div class="lead" style="margin-top:20px; opacity:.92;">
+    Konda уже превращает русский текст в настоящую программу — и продолжает расти.
+  </div>
+  <div class="sub" style="font-size:34px; margin-top:30px;"><b>Вопросы? 💬</b></div>
+  <div class="foot"><span>Konda</span><span>16</span></div>
 </section>
 
 </body>
