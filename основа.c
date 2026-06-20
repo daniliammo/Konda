@@ -4,8 +4,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-#include "транспилятор.h"
-#include "аст.h"
+#include "konda.h"   /* публичный API библиотеки libkonda */
 
 #define ПАПКА_ВЫВОДА "вывод"
 
