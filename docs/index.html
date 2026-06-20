@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Konda — экспериментальный русский язык программирования, который переводится в C.">
+  <meta name="theme-color" content="#0b0d0c">
+  <title>Konda — программирование на русском</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Konda — на главную">
+      <span class="brand-mark">К</span>
+      <span>Konda</span>
+    </a>
+
+    <nav class="main-nav" aria-label="Основная навигация">
+      <a href="#language">Язык</a>
+      <a href="#inside">Как устроен</a>
+      <a href="#roadmap">Планы</a>
+    </nav>
+
+    <a class="header-link" href="https://github.com/daniliammo/Konda">GitHub <span>↗</span></a>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot"></span> Экспериментальный язык · открытый исходный код</p>
+        <h1>Код, который<br><em>думает по-русски.</em></h1>
+        <p class="hero-lead">
+          Konda — компилируемый язык с русским синтаксисом.
+          Пишешь понятный код, Konda проверяет его, переводит в C
+          и собирает обычным компилятором.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/daniliammo/Konda#сборка">Попробовать Konda <span>→</span></a>
+          <a class="button button-ghost" href="#language">Посмотреть синтаксис</a>
+        </div>
+        <dl class="hero-stats">
+          <div>
+            <dt>3</dt>
+            <dd>прохода компилятора</dd>
+          </div>
+          <div>
+            <dt>C23</dt>
+            <dd>целевая платформа</dd>
+          </div>
+          <div>
+            <dt>100%</dt>
+            <dd>тестов проходят</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="terminal-wrap" aria-label="Пример программы на Konda">
+        <div class="terminal-glow"></div>
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="traffic-lights" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="terminal-title">привет.конда</span>
+            <button class="copy-button" type="button" data-copy="hero-code">копировать</button>
+          </div>
+          <pre id="hero-code"><code><span class="tok-directive">#содержит</span> &lt;stdio.h&gt;
+
+<span class="tok-type">целое32</span> <span class="tok-fn">точка_входа</span>(
+    <span class="tok-type">целое32</span> количество,
+    <span class="tok-type">символ</span>** аргументы)
+{
+    <span class="tok-type">целое32</span> сумма = <span class="tok-num">0</span>
+
+    <span class="tok-keyword">для</span> (<span class="tok-type">целое32</span> и = <span class="tok-num">1</span>;
+         и &lt;= <span class="tok-num">5</span>; и = и + <span class="tok-num">1</span>) {
+        сумма = сумма + и
+    }
+
+    printf(<span class="tok-string">"Сумма: %d\n"</span>, сумма)
+    <span class="tok-keyword">вернуть</span> <span class="tok-num">0</span>
+}</code></pre>
+          <div class="terminal-output">
+            <span class="prompt">$</span> ./вывод/привет.elf
+            <strong>Сумма: 15</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="statement" aria-label="Главная идея">
+      <p>Не перевод слов поверх C.</p>
+      <h2>Настоящий компилятор: дерево программы, проверка смысла и генерация кода.</h2>
+    </section>
+
+    <section class="language-section" id="language">
+      <div class="section-heading">
+        <p class="eyebrow">01 · Язык</p>
+        <h2>Знакомые идеи.<br>Понятные слова.</h2>
+        <p>Konda сохраняет строгость системного программирования, но делает исходный код ближе к тому, как мы объясняем алгоритмы друг другу.</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card feature-card-wide">
+          <div class="feature-number">01</div>
+          <div>
+            <h3>Без лишней пунктуации</h3>
+            <p>Перевод строки завершает команду. Точка с запятой нужна только там, где действительно помогает структуре.</p>
+          </div>
+          <pre><code><span class="tok-type">целое32</span> ответ = <span class="tok-num">42</span>
+ответ = ответ + <span class="tok-num">1</span>
+printf(<span class="tok-string">"%d\n"</span>, ответ)</code></pre>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon">↻</div>
+          <h3>Условия и циклы</h3>
+          <p><code>если</code>, <code>иначе</code>, <code>пока</code> и <code>для</code> уже работают.</p>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon">8→64</div>
+          <h3>Точные типы</h3>
+          <p><code>целое8</code>…<code>целое64</code>, байты, символы, вещественные числа и указатели.</p>
+        </article>
+
+        <article class="feature-card">
+          <div class="feature-icon">⌁</div>
+          <h3>Проверки до запуска</h3>
+          <p>Необъявленные переменные, неверная область видимости и деление на ноль становятся понятными ошибками.</p>
+        </article>
+
+        <article class="feature-card feature-accent">
+          <div class="feature-icon">→ C</div>
+          <h3>Работает с экосистемой C</h3>
+          <p>Результат — читаемый C-код и нативная программа, собранная GCC или Clang.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="compare-section">
+      <div class="compare-copy">
+        <p class="eyebrow">Один алгоритм · два представления</p>
+        <h2>Konda говорит понятно. Компьютер получает C.</h2>
+        <p>Это не онлайн-компилятор, а наглядный пример того, что делает локальный транспилятор.</p>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-tabs" role="tablist" aria-label="Выбор языка примера">
+          <button class="code-tab active" type="button" role="tab" aria-selected="true" data-code-tab="konda">Konda</button>
+          <button class="code-tab" type="button" role="tab" aria-selected="false" data-code-tab="c">Результат C</button>
+          <span class="code-file" data-code-file>счётчик.конда</span>
+        </div>
+        <div class="code-panel active" data-code-panel="konda">
+          <pre><code><span class="tok-type">целое32</span> <span class="tok-fn">точка_входа</span>(
+    <span class="tok-type">целое32</span> количество,
+    <span class="tok-type">символ</span>** аргументы)
+{
+    <span class="tok-type">целое32</span> счётчик = <span class="tok-num">3</span>
+
+    <span class="tok-keyword">пока</span> (счётчик &gt; <span class="tok-num">0</span>) {
+        printf(<span class="tok-string">"%d\n"</span>, счётчик)
+        счётчик = счётчик - <span class="tok-num">1</span>
+    }
+
+    <span class="tok-keyword">вернуть</span> <span class="tok-num">0</span>
+}</code></pre>
+        </div>
+        <div class="code-panel" data-code-panel="c" hidden>
+          <pre><code><span class="tok-directive">#include</span> &lt;stdint.h&gt;
+<span class="tok-directive">#include</span> &lt;stdio.h&gt;
+
+int32_t <span class="tok-fn">main</span>(
+    int32_t argc,
+    char **argv)
+{
+    int32_t счётчик = <span class="tok-num">3</span>;
+
+    <span class="tok-keyword">while</span> (счётчик &gt; <span class="tok-num">0</span>) {
+        printf(<span class="tok-string">"%d\n"</span>, счётчик);
+        счётчик = счётчик - <span class="tok-num">1</span>;
+    }
+
+    <span class="tok-keyword">return</span> <span class="tok-num">0</span>;
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="inside-section" id="inside">
+      <div class="section-heading">
+        <p class="eyebrow">02 · Внутри</p>
+        <h2>Из текста —<br>в работающую программу.</h2>
+      </div>
+
+      <div class="pipeline">
+        <article>
+          <span>01</span>
+          <h3>Разбор</h3>
+          <p>Лексер и парсер превращают строки в дерево программы — AST.</p>
+          <code>разбор.c</code>
+        </article>
+        <div class="pipeline-arrow" aria-hidden="true">→</div>
+        <article>
+          <span>02</span>
+          <h3>Проверка</h3>
+          <p>Семантический анализ проверяет переменные, области видимости и опасные операции.</p>
+          <code>семантика.c</code>
+        </article>
+        <div class="pipeline-arrow" aria-hidden="true">→</div>
+        <article>
+          <span>03</span>
+          <h3>Генерация</h3>
+          <p>Кодоген создаёт C23, после чего GCC или Clang собирает бинарный файл.</p>
+          <code>кодоген.c</code>
+        </article>
+      </div>
+    </section>
+
+    <section class="roadmap-section" id="roadmap">
+      <div class="section-heading">
+        <p class="eyebrow">03 · Дальше</p>
+        <h2>Проект только<br>набирает скорость.</h2>
+      </div>
+
+      <ol class="roadmap">
+        <li class="done">
+          <span class="roadmap-state">готово</span>
+          <div>
+            <h3>AST и трёхпроходный компилятор</h3>
+            <p>Разбор, проверка программы и генерация C разделены на независимые этапы.</p>
+          </div>
+        </li>
+        <li class="active">
+          <span class="roadmap-state">сейчас</span>
+          <div>
+            <h3>Полная проверка типов</h3>
+            <p>Совместимость выражений, присваиваний и параметров функций.</p>
+          </div>
+        </li>
+        <li>
+          <span class="roadmap-state">дальше</span>
+          <div>
+            <h3>Безопасная память</h3>
+            <p>Срезы, проверки границ, владение и автоматическое освобождение ресурсов.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="cta-section">
+      <p class="eyebrow">Konda · развивается открыто</p>
+      <h2>Посмотрите код.<br>Запустите пример.<br><em>Предложите идею.</em></h2>
+      <div class="cta-actions">
+        <a class="button button-light" href="https://github.com/daniliammo/Konda">Открыть GitHub <span>↗</span></a>
+        <a class="text-link" href="konda_presentation.html">Смотреть презентацию →</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a class="brand" href="#top">
+      <span class="brand-mark">К</span>
+      <span>Konda</span>
+    </a>
+    <p>Экспериментальный русский язык программирования.</p>
+    <p>Сделано открыто · 2026</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
