@@ -51,3 +51,18 @@ char* прочитать_файл(char *путь_к_файлу, size_t *out_size
 
     return buffer;
 }
+
+int скомпилировать_си(const char *путь_си, const char *путь_исполняемого)
+{
+    char команда[2048];
+    snprintf(команда, sizeof(команда), "cc -std=gnu23 -Wall -Wextra -O2 -o \"%s.elf\" \"%s\"",
+             путь_исполняемого, путь_си);
+    printf("%s\n", команда);
+    int код = system(команда);
+    if (код != 0) {
+        fprintf(stderr, "Ошибка компиляции (код %d)\n", код);
+        return 1;
+    }
+    printf("Собрано: %s.elf\n", путь_исполняемого);
+    return 0;
+}
