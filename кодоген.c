@@ -84,6 +84,7 @@ static void тип_токена_в_си(ТипТокена t, int беззнак
         case ТОКЕН_БАЙТ:         snprintf(out, out_cap, "uint8_t"); break;
         case ТОКЕН_ВЕЩЕСТВЕННОЕ: snprintf(out, out_cap, "float");   break;
         case ТОКЕН_ТИП_СИМВОЛ:   snprintf(out, out_cap, "char");    break;
+        case ТОКЕН_НИЧЕГО:       snprintf(out, out_cap, "void");    break;
         default:                 snprintf(out, out_cap, "int");     break;
     }
 }
