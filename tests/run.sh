@@ -6834,4 +6834,74 @@ if "$BIN" вывод/делег.конда >"$TMP/к5т.log" 2>&1; then
 fi
 grep -q "по всем путям" "$TMP/к5т.log" || fail "делегирование: ожидалась диагностика Konda о возврате"
 
+# ─── Конвертер: ручная память C → срез/выделить (autofree) ──────────────────
+# malloc(N*sizeof(T)) массива → срез<T>=выделить(N); free выкидывается (autofree
+# транспилятора освобождает срез сам); *p→p[0], p->f→p[0].f; сквозной прогон.
+cat > мем_массив.c <<'C'
+#include <stdio.h>
+#include <stdlib.h>
+int main(void) {
+    int *a = malloc(4 * sizeof(int));
+    for (int i = 0; i < 4; i++) { a[i] = i * i; }
+    int s = 0;
+    for (int i = 0; i < 4; i++) { s += a[i]; }
+    printf("%d\n", s);
+    free(a);
+    return 0;
+}
+C
+"$BIN2" мем_массив.c >"$TMP/м1.log" 2>&1 || { cat "$TMP/м1.log" >&2; fail "мем: массив"; }
+grep -q "срез<целое32> a = выделить(4)" вывод/мем_массив.конда || fail "мем: malloc → срез/выделить"
+grep -q "free" вывод/мем_массив.конда && fail "мем: free должен быть выброшен"
+grep -q "malloc" вывод/мем_массив.конда && fail "мем: malloc должен быть заменён"
+"$BIN" вывод/мем_массив.конда >"$TMP/м1т.log" 2>&1 || { cat "$TMP/м1т.log" >&2; fail "мем: срез-версия должна транспилироваться"; }
+grep -q "free(a.данные)" вывод/мем_массив.c || fail "мем: autofree в сгенерированном C"
+assert_eq "14" "$(./вывод/мем_массив.elf)" "мем: сквозной прогон массива"
+
+# Одиночный объект-скаляр: malloc(sizeof(int)) → выделить(1); *p → p[0].
+cat > мем_один.c <<'C'
+#include <stdio.h>
+#include <stdlib.h>
+int main(void) {
+    int *p = malloc(sizeof(int));
+    *p = 5;
+    printf("%d\n", *p);
+    free(p);
+    return 0;
+}
+C
+"$BIN2" мем_один.c >"$TMP/м2.log" 2>&1 || { cat "$TMP/м2.log" >&2; fail "мем: одиночный"; }
+grep -q "срез<целое32> p = выделить(1)" вывод/мем_один.конда || fail "мем: malloc(sizeof) → выделить(1)"
+grep -q "p\[0\] = 5" вывод/мем_один.конда || fail "мем: *p → p[0]"
+"$BIN" вывод/мем_один.конда >"$TMP/м2т.log" 2>&1 || { cat "$TMP/м2т.log" >&2; fail "мем: одиночный транспилируется"; }
+assert_eq "5" "$(./вывод/мем_один.elf)" "мем: сквозной прогон одиночного"
+
+# calloc(N, sizeof(T)) → выделить(N).
+cat > мем_calloc.c <<'C'
+#include <stdlib.h>
+int main(void) { int n = 3; int *a = calloc(n, sizeof(int)); a[2] = 9; int r = a[2]; free(a); return r; }
+C
+"$BIN2" мем_calloc.c >"$TMP/м3.log" 2>&1 || { cat "$TMP/м3.log" >&2; fail "мем: calloc"; }
+grep -q "срез<целое32> a = выделить(n)" вывод/мем_calloc.конда || fail "мем: calloc → выделить(n)"
+
+# Не конвертируется (указатель уходит в вызов): остаётся сырым + предупреждение,
+# конвертер завершается успешно (предупреждение — не ошибка).
+cat > мем_сырой.c <<'C'
+#include <stdlib.h>
+void берёт(int *q);
+int main(void) { int *p = malloc(8); берёт(p); free(p); return 0; }
+C
+"$BIN2" мем_сырой.c >"$TMP/м4.log" 2>&1 || { cat "$TMP/м4.log" >&2; fail "мем: сырой должен завершиться успешно (предупреждение)"; }
+grep -q "Предупреждение" "$TMP/м4.log" || fail "мем: ожидалось предупреждение о ручной памяти"
+grep -q "malloc" вывод/мем_сырой.конда || fail "мем: неконвертируемый malloc остаётся дословно"
+
+# Структурное выделение (срез Konda не держит структуры) — остаётся сырым.
+cat > мем_структ.c <<'C'
+#include <stdlib.h>
+struct T { int x; };
+int main(void) { struct T *p = malloc(sizeof(struct T)); p->x = 7; int r = p->x; free(p); return r; }
+C
+"$BIN2" мем_структ.c >"$TMP/м5.log" 2>&1 || { cat "$TMP/м5.log" >&2; fail "мем: структ должен завершиться успешно"; }
+grep -q "malloc" вывод/мем_структ.конда || fail "мем: структурное выделение остаётся сырым"
+
 printf 'OK: все тесты прошли\n'
