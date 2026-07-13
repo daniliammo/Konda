@@ -30,7 +30,13 @@ LIB_OBJ = $(LIB_SRC:.c=.o)
 TARGET = Собранное/Транспилятор
 CLI_OBJ = основа.o
 
-all: $(TARGET)
+# Самостоятельный конвертер C → Konda. НЕ линкует libkonda и не содержит
+# транспиляции — только перевод синтаксиса. Из общего кода берёт лишь чистый
+# контейнер дин_массив.o (ДинМассив/БуферКода).
+КОНВ = Собранное/СиВКонда
+КОНВ_OBJ = си_разбор.o конда_вывод.o си_в_конда.o
+
+all: $(TARGET) $(КОНВ)
 
 test: $(TARGET)
 	sh tests/run.sh
@@ -45,16 +51,25 @@ $(TARGET): $(CLI_OBJ) $(LIB)
 	mkdir -p Собранное
 	$(CC) $(CFLAGS) $(CLI_OBJ) -L Собранное -lkonda $(LDFLAGS) $(RPATH_FLAGS) -o $(TARGET)
 
+# Конвертер: самостоятельный бинарник без зависимости от .so.
+$(КОНВ): $(КОНВ_OBJ) дин_массив.o
+	mkdir -p Собранное
+	$(CC) $(CFLAGS) $(КОНВ_OBJ) дин_массив.o $(LDFLAGS) -o $(КОНВ)
+
 %.o: %.c транспилятор.h аст.h konda.h владение.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Объекты конвертера дополнительно зависят от собственного заголовка.
+$(КОНВ_OBJ): сиконда.h
+
 clean:
-	rm -f $(TARGET) Собранное/libkonda.so Собранное/libkonda.dylib $(LIB_OBJ) $(CLI_OBJ)
+	rm -f $(TARGET) $(КОНВ) Собранное/libkonda.so Собранное/libkonda.dylib $(LIB_OBJ) $(CLI_OBJ) $(КОНВ_OBJ)
 
 # Установка библиотеки, публичного заголовка и CLI.
 PREFIX ?= /usr/local
-install: $(TARGET)
+install: $(TARGET) $(КОНВ)
 	install -d $(PREFIX)/lib $(PREFIX)/include $(PREFIX)/bin
 	install -m 644 $(LIB) $(PREFIX)/lib/$(LIB_NAME)
 	install -m 644 konda.h транспилятор.h аст.h заголовки.h обобщения.h libkonda_ide.h $(PREFIX)/include/
 	install -m 755 $(TARGET) $(PREFIX)/bin/konda
+	install -m 755 $(КОНВ) $(PREFIX)/bin/konda-from-c
