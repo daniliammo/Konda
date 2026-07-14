@@ -4,6 +4,9 @@
 # macOS
 .DS_Store
 
+.idea/
+.vscode/
+
 # Konda build outputs
 Собранное/
 Собранное
