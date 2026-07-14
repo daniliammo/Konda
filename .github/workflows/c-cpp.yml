@@ -15,6 +15,5 @@ jobs:
     - name: make
       run: make
 
-    steps:
-      - name: tests
+    - name: tests
       run: ./tests/run.sh
