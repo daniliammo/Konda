@@ -23,7 +23,7 @@ endif
 
 # Разделяемая библиотека: вся логика транспиляции, кроме CLI (основа.c).
 LIB = Собранное/$(LIB_NAME)
-LIB_SRC = дин_массив.c токенизатор_лексер.c конвейер.c ввод_вывод.c аст.c разбор.c обобщения.c семантика.c владение.c кодоген.c заголовки.c интерфейс.c libkonda_ide.c
+LIB_SRC = дин_массив.c токенизатор_лексер.c конвейер.c ввод_вывод.c аст.c разбор.c обобщения.c семантика.c владение.c кодоген.c заголовки.c интерфейс.c макросы.c libkonda_ide.c
 LIB_OBJ = $(LIB_SRC:.c=.o)
 
 # Исполняемый CLI поверх публичного API библиотеки.
@@ -56,7 +56,7 @@ $(КОНВ): $(КОНВ_OBJ) дин_массив.o
 	mkdir -p Собранное
 	$(CC) $(CFLAGS) $(КОНВ_OBJ) дин_массив.o $(LDFLAGS) -o $(КОНВ)
 
-%.o: %.c транспилятор.h аст.h konda.h владение.h интерфейс.h
+%.o: %.c транспилятор.h аст.h konda.h владение.h интерфейс.h макросы.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Объекты конвертера дополнительно зависят от собственного заголовка.
@@ -70,6 +70,6 @@ PREFIX ?= /usr/local
 install: $(TARGET) $(КОНВ)
 	install -d $(PREFIX)/lib $(PREFIX)/include $(PREFIX)/bin
 	install -m 644 $(LIB) $(PREFIX)/lib/$(LIB_NAME)
-	install -m 644 konda.h транспилятор.h аст.h заголовки.h обобщения.h интерфейс.h libkonda_ide.h $(PREFIX)/include/
+	install -m 644 konda.h транспилятор.h аст.h заголовки.h обобщения.h интерфейс.h макросы.h libkonda_ide.h $(PREFIX)/include/
 	install -m 755 $(TARGET) $(PREFIX)/bin/konda
 	install -m 755 $(КОНВ) $(PREFIX)/bin/konda-from-c
