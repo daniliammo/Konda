@@ -1,4 +1,4 @@
-name: GCC 13 CI
+name: GCC 14 CI
 
 on:
   push:
@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - name: Install GCC 13
+    - name: Install GCC 14
       uses: aminya/setup-cpp@v1
       with:
-        compiler: gcc-13
+        compiler: gcc-14
 
     - name: Checkout
       uses: actions/checkout@v4
