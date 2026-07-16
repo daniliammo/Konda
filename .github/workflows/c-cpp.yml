@@ -11,6 +11,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+    
+    - name: Install GCC 13
+    uses: aminya/setup-cpp@v1
+    with:
+        compiler: gcc-13
+    
     - name: Checkout
       uses: actions/checkout@v4
 
