@@ -6457,7 +6457,7 @@ int main(void) {
 C_EOF
 
 cc -std=gnu23 -I "$ROOT" "$TMP/ide_потребитель.c" \
-   -L "$ROOT/Собранное" -lkonda -Wl,-rpath,"$ROOT/Собранное" \
+   -L "$ROOT/Собранное" -lkonda-transpiler -Wl,-rpath,"$ROOT/Собранное" \
    -o "$TMP/ide_потребитель" 2>"$TMP/ide_сборка.log" || {
     cat "$TMP/ide_сборка.log" >&2
     fail "C-потребитель LSP-API должен линковаться с libkonda"
@@ -6514,7 +6514,7 @@ int main(void) {
 C_EOF
 
 cc -std=gnu23 -I "$ROOT" "$TMP/батч_потребитель.c" \
-   -L "$ROOT/Собранное" -lkonda -Wl,-rpath,"$ROOT/Собранное" \
+   -L "$ROOT/Собранное" -lkonda-transpiler -Wl,-rpath,"$ROOT/Собранное" \
    -o "$TMP/батч_потребитель" 2>"$TMP/батч_сборка.log" || {
     cat "$TMP/батч_сборка.log" >&2
     fail "C-потребитель батч-API должен линковаться с libkonda"
