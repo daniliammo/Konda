@@ -6,19 +6,20 @@ CFLAGS ?= -Wall -Wextra -O2 -std=gnu23
 CFLAGS += -fPIC
 LDFLAGS ?=
 
-ifeq ($(UNAME_S),Linux)
-LDFLAGS += -Wl,--gc-sections
-LIB_NAME = libkonda.so
-SHARED_FLAGS = -shared
-# При локальной сборке библиотека лежит рядом с CLI; после make install —
-# в ../lib относительно $(PREFIX)/bin/konda.
-RPATH_FLAGS = -Wl,-rpath,'$$ORIGIN' -Wl,-rpath,'$$ORIGIN/../lib'
+ifneq ($(filter $(UNAME_S),Linux FreeBSD OpenBSD),)
+	LDFLAGS += -Wl,--gc-sections
+	LIB_NAME = libkonda-transpiler.so
+	SHARED_FLAGS = -shared
+	# При локальной сборке библиотека лежит рядом с CLI; после make install —
+	# в ../lib относительно $(PREFIX)/bin/konda.
+	RPATH_FLAGS = -Wl,-rpath,'$$ORIGIN' -Wl,-rpath,'$$ORIGIN/../lib'
+
 else ifeq ($(UNAME_S),Darwin)
-LIB_NAME = libkonda.dylib
-SHARED_FLAGS = -dynamiclib -Wl,-install_name,@rpath/$(LIB_NAME)
-RPATH_FLAGS = -Wl,-rpath,@loader_path -Wl,-rpath,@loader_path/../lib
+	LIB_NAME = libkonda-transpiler.dylib
+	SHARED_FLAGS = -dynamiclib -Wl,-install_name,@rpath/$(LIB_NAME)
+	RPATH_FLAGS = -Wl,-rpath,@loader_path -Wl,-rpath,@loader_path/../lib
 else
-$(error Неподдерживаемая операционная система: $(UNAME_S))
+	$(error Неподдерживаемая операционная система: $(UNAME_S))
 endif
 
 # Разделяемая библиотека: вся логика транспиляции, кроме CLI (основа.c).
@@ -40,16 +41,16 @@ $(LIB): $(LIB_OBJ)
 	mkdir -p Собранное
 	$(CC) $(SHARED_FLAGS) $(LIB_OBJ) $(LDFLAGS) -o $(LIB)
 
-# CLI ищет libkonda рядом с собой при локальной сборке и в ../lib после установки.
+# CLI ищет libkonda-transpiler рядом с собой при локальной сборке и в ../lib после установки.
 $(TARGET): $(CLI_OBJ) $(LIB)
 	mkdir -p Собранное
-	$(CC) $(CFLAGS) $(CLI_OBJ) -L Собранное -lkonda $(LDFLAGS) $(RPATH_FLAGS) -o $(TARGET)
+	$(CC) $(CFLAGS) $(CLI_OBJ) -L Собранное -lkonda-transpiler $(LDFLAGS) $(RPATH_FLAGS) -o $(TARGET)
 
 %.o: %.c транспилятор.h аст.h konda.h владение.h интерфейс.h макросы.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) Собранное/libkonda.so Собранное/libkonda.dylib $(LIB_OBJ) $(CLI_OBJ)
+	rm -f $(TARGET) Собранное/libkonda-transpiler.so Собранное/libkonda-transpiler.dylib $(LIB_OBJ) $(CLI_OBJ)
 
 # Установка библиотеки, публичного заголовка и CLI.
 PREFIX ?= /usr/local
