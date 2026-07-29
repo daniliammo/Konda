@@ -2,7 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-BIN="$ROOT/Собранное/Транспилятор"
+BIN="$ROOT/Собранное/ТранспиляторКонда"
 TMP=$(mktemp -d)
 
 cleanup() {
