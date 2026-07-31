@@ -72,7 +72,7 @@ static void абс_каталог_файла(const char *путь, char *out, si
 int скомпилировать_си(const char *путь_си, const char *путь_вывода, int релиз,
                       int библиотека, const char *вкл_каталог,
                       const char **доп_so, size_t число_so, int потоки,
-                      const char *компилятор, int jemalloc)
+                      const char *компилятор, int jemalloc, int символы)
 {
     if (!компилятор || !компилятор[0]) компилятор = "cc";
     // jemalloc — только для исполняемых файлов: у .so аллокатор выбирает
@@ -92,7 +92,8 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // содержимое вроде «"; rm -rf ~; echo "» — просто буквы в имени файла,
     // а не команда (в отличие от прежней сборки строки для system()).
     // 16 базовых + «-I каталог» (2) + по 2 на каждую .so (путь + -rpath) + NULL.
-    size_t макс_арг = 19 + 2 * число_so + 2;  // +1 «-pthread», +1 jemalloc
+    // +1 «-pthread», +1 jemalloc, +3 символы (-rdynamic/-funwind-tables/-g).
+    size_t макс_арг = 19 + 2 * число_so + 5;
     const char **argv = calloc(макс_арг, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); return 1; }
@@ -111,6 +112,18 @@ int скомпилировать_си(const char *путь_си, const char *п�
     } else {
         argv[n++] = "-O0";
         argv[n++] = "-g";
+    }
+    // Читаемость бэктрейса (конда_прервать вшит в рантайм всегда). Эти флаги
+    // влияют только на РАЗМЕР бинарника, не на скорость, поэтому включены по
+    // умолчанию и снимаются флагом «--без-символов» (трейс останется, но
+    // адресами вместо имён): -rdynamic — символы в .dynsym для
+    // backtrace_symbols_fd; -funwind-tables — .eh_frame для раскрутки БЕЗ frame
+    // pointer (поэтому -fno-omit-frame-pointer НЕ нужен — скорость релиза цела);
+    // -g в релизе — имена/строки для addr2line (в отладке -g уже добавлен выше).
+    if (символы) {
+        argv[n++] = "-rdynamic";
+        argv[n++] = "-funwind-tables";
+        if (релиз) argv[n++] = "-g";
     }
     if (библиотека) {
         argv[n++] = "-shared";
