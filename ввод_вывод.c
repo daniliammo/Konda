@@ -71,8 +71,13 @@ static void абс_каталог_файла(const char *путь, char *out, si
 
 int скомпилировать_си(const char *путь_си, const char *путь_вывода, int релиз,
                       int библиотека, const char *вкл_каталог,
-                      const char **доп_so, size_t число_so, int потоки)
+                      const char **доп_so, size_t число_so, int потоки,
+                      const char *компилятор, int jemalloc)
 {
+    if (!компилятор || !компилятор[0]) компилятор = "cc";
+    // jemalloc — только для исполняемых файлов: у .so аллокатор выбирает
+    // финальная программа, навязывать интерпозицию в библиотеке нельзя.
+    int линк_jemalloc = jemalloc && !библиотека;
     // Релиз: -O2 (проверки уже сняты кодогеном → скорость уровня C).
     // Отладка: -O0 -g — быстрая компиляция и удобная отладка; рантайм-проверки
     // из кодогена ловят UB с понятным сообщением.
@@ -87,12 +92,12 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // содержимое вроде «"; rm -rf ~; echo "» — просто буквы в имени файла,
     // а не команда (в отличие от прежней сборки строки для system()).
     // 16 базовых + «-I каталог» (2) + по 2 на каждую .so (путь + -rpath) + NULL.
-    size_t макс_арг = 19 + 2 * число_so + 1;  // +1 на «-pthread»
+    size_t макс_арг = 19 + 2 * число_so + 2;  // +1 «-pthread», +1 jemalloc
     const char **argv = calloc(макс_арг, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); return 1; }
     int n = 0;
-    argv[n++] = "cc";
+    argv[n++] = компилятор;
     argv[n++] = "-std=gnu23";
     argv[n++] = "-Wall";
     argv[n++] = "-Wextra";
@@ -134,6 +139,12 @@ int скомпилировать_си(const char *путь_си, const char *п�
         argv[n++] = доп_so[i];
         argv[n++] = rpaths[i];
     }
+    // jemalloc — интерпозиция malloc/calloc/free: линкуем по версионному soname
+    // (работает и без dev-пакета). Ставим ПОСЛЕ источника/библиотек, чтобы
+    // неопределённые calloc/free программы разрешились в jemalloc, а не libc.
+    if (линк_jemalloc) {
+        argv[n++] = "-l:libjemalloc.so.2";
+    }
     argv[n] = nullptr;
 
     for (int i = 0; i < n; ++i) {
@@ -147,8 +158,8 @@ int скомпилировать_си(const char *путь_си, const char *п�
         perror("fork");
         рез = 1;
     } else if (pid == 0) {
-        execvp("cc", (char *const *)argv);
-        perror("execvp");
+        execvp(компилятор, (char *const *)argv);
+        perror(компилятор);
         _exit(127);
     } else {
         int статус = 0;
