@@ -19,6 +19,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: install libjemalloc2
+      run: apt install libjemalloc2
+
     - name: make
       run: make
 
