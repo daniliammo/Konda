@@ -1,4 +1,4 @@
-name: GCC 14 CI
+name: GCC 15 CI
 
 on:
   push:
@@ -11,16 +11,21 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - name: Install GCC 14
-      uses: aminya/setup-cpp@v1
-      with:
-        compiler: gcc-14
-
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: install libjemalloc2
-      run: sudo apt install libjemalloc2
+    - name: Install GCC 15
+      # gcc-15 нужен для musttail → гарантированного TCO. Сборка и тесты требуют
+      # gcc ≥ 15 (иначе — явная ошибка, а не тихая деградация). Делаем «cc»/«gcc»
+      # ссылкой на gcc-15: транспилятор компилирует сгенерированный C ВНУТРЕННИМ
+      # «cc» (не только make) — оба должны быть gcc-15.
+      run: |
+        sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+        sudo apt-get update
+        sudo apt-get install -y gcc-15 libjemalloc2
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100
+        sudo update-alternatives --install /usr/bin/cc  cc  /usr/bin/gcc-15 100
+        cc --version
 
     - name: make
       run: make

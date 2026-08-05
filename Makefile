@@ -1,6 +1,22 @@
 CC ?= cc
 UNAME_S := $(shell uname -s)
 
+# ── Требование к компилятору: gcc ≥ 15 (или clang) ──────────────────────────
+# Проект опирается на musttail → ГАРАНТИРОВАННЫЙ TCO (у gcc — только с 15-й
+# версии). Старый gcc собрал бы БЕЗ гарантии (тихая деградация: глубокая хвостовая
+# рекурсия переполнит стек) — по решению пользователя это ЯВНАЯ ОШИБКА сборки, а
+# не молчаливое ослабление. clang (свой musttail с давних версий) пропускаем.
+# Переопределить компилятор: make CC=gcc-15.
+CC_ID := $(shell $(CC) --version 2>/dev/null | head -1)
+ifeq ($(findstring clang,$(CC_ID)),)
+  CC_MAJ := $(shell $(CC) -dumpversion 2>/dev/null | cut -d. -f1)
+  ifneq ($(CC_MAJ),)
+    ifeq ($(shell [ "$(CC_MAJ)" -lt 15 ] 2>/dev/null && echo old),old)
+      $(error Требуется gcc >= 15 (обнаружен gcc $(CC_MAJ)): нужен musttail для гарантированного TCO. Установите gcc-15 и соберите «make CC=gcc-15», либо используйте clang.)
+    endif
+  endif
+endif
+
 CFLAGS ?= -Wall -Wextra -O2 -std=gnu23
 # Объекты идут в разделяемую библиотеку, поэтому собираем позиционно-независимо.
 CFLAGS += -fPIC
