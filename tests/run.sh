@@ -10118,6 +10118,18 @@ grep -q "компиляция пропущена" "$TMP/только_си.log" |
 grep -q -- "-l:libjemalloc.so.2" "$TMP/деф.log" || {
     cat "$TMP/деф.log" >&2; fail "по умолчанию должен линковаться jemalloc"; }
 
+# Hardening (нулевая цена на горячем пути, переносимая защита) — в команде
+# компиляции присутствуют всегда: full RELRO, NX-стек, stack-clash, канарейка.
+for f in "-Wl,-z,relro" "-Wl,-z,now" "-Wl,-z,noexecstack" \
+         "-fstack-clash-protection" "-fstack-protector-strong"; do
+    grep -q -- "$f" "$TMP/деф.log" || {
+        cat "$TMP/деф.log" >&2; fail "hardening-флаг $f должен ставиться (отладка)"; }
+done
+# И в релизе тоже (hardening не зависит от режима оптимизации).
+"$BIN" --релиз флаги_сборки.конда >"$TMP/деф_рел.log" 2>&1
+grep -q -- "-fstack-clash-protection" "$TMP/деф_рел.log" || {
+    cat "$TMP/деф_рел.log" >&2; fail "hardening должен ставиться и в релизе"; }
+
 # --аллокатор=libc: jemalloc не линкуется.
 "$BIN" --аллокатор=libc флаги_сборки.конда >"$TMP/лкц.log" 2>&1
 if grep -q -- "libjemalloc" "$TMP/лкц.log"; then

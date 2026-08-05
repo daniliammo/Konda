@@ -92,8 +92,9 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // содержимое вроде «"; rm -rf ~; echo "» — просто буквы в имени файла,
     // а не команда (в отличие от прежней сборки строки для system()).
     // 16 базовых + «-I каталог» (2) + по 2 на каждую .so (путь + -rpath) + NULL.
-    // +1 «-pthread», +1 jemalloc, +3 символы (-rdynamic/-funwind-tables/-g).
-    size_t макс_арг = 19 + 2 * число_so + 5;
+    // +1 «-pthread», +1 jemalloc, +3 символы (-rdynamic/-funwind-tables/-g),
+    // +5 hardening (-Wl,-z,relro/now/noexecstack + stack-clash/protector-strong).
+    size_t макс_арг = 24 + 2 * число_so + 5;
     const char **argv = calloc(макс_арг, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); return 1; }
@@ -102,6 +103,27 @@ int скомпилировать_си(const char *путь_си, const char *п�
     argv[n++] = "-std=gnu23";
     argv[n++] = "-Wall";
     argv[n++] = "-Wextra";
+    // Hardening — переносимая защита с НУЛЕВОЙ ценой на горячем пути (инвариант
+    // №1 цел). На хост-gcc большинство этого — дефолт, но кросс-тулчейны/vanilla
+    // clang/musl их могут НЕ включать, поэтому задаём ЯВНО (страховка на цель):
+    //   • -Wl,-z,relro,-z,now — full RELRO: GOT только для чтения после старта;
+    //     цена лишь на загрузке, горячий путь не тронут;
+    //   • -Wl,-z,noexecstack — неисполняемый стек (NX), ноль цены;
+    //   • -fstack-clash-protection — зондирование больших кадров, чтобы
+    //     аллокация НЕ ПЕРЕПРЫГНУЛА guard-страницу. Прямо усиливает защиту стека
+    //     из рекурсии: обработчик ловит переполнение постфактум, а этот флаг не
+    //     даёт перепрыгнуть страницу вовсе; near-zero (зонд только на крупных
+    //     кадрах);
+    //   • -fstack-protector-strong — канарейка против переполнения буфера в
+    //     кадре (в safe-коде их нет, но в «небезопасно»/при баге кодогена —
+    //     defense-in-depth). Стоит копейки, дистрибутивы включают всем.
+    // (-fPIE/ASLR не дублируем — это дефолт линковки; -march=native НЕ ставим —
+    //  ломал бы переносимость и кросс.)
+    argv[n++] = "-Wl,-z,relro";
+    argv[n++] = "-Wl,-z,now";
+    argv[n++] = "-Wl,-z,noexecstack";
+    argv[n++] = "-fstack-clash-protection";
+    argv[n++] = "-fstack-protector-strong";
     if (релиз) {
         argv[n++] = "-O2";
         // Знаковое переполнение — определённое (обёртка по модулю 2^N), а не UB.
