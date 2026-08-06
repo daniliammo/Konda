@@ -1,4 +1,4 @@
-# Konda [![CI](https://github.com/daniliammo/Konda-From-Clang/actions/workflows/ci.yml/badge.svg)](https://github.com/daniliammo/Konda-From-Clang/actions/workflows/ci.yml)
+# Konda [![GCC 15 CI](https://github.com/daniliammo/Konda/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/daniliammo/Konda/actions/workflows/c-cpp.yml)
 
 Konda - экспериментальный русский язык программирования, который сейчас
 транспилируется в C и затем собирается обычным C-компилятором.
