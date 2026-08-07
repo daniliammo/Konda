@@ -170,9 +170,10 @@ char* прочитать_файл(char *путь_к_файлу, size_t *возв
 // -rdynamic/-funwind-tables/-g для читаемого бэктрейса (только размер, не
 // скорость; 0 = «--без-символов», трейс останется, но адресами вместо имён).
 int скомпилировать_си(const char *путь_си, const char *путь_вывода, int релиз,
-                      int библиотека, const char *вкл_каталог,
-                      const char **доп_so, size_t число_so, int потоки,
-                      const char *компилятор, int jemalloc, int символы);
+                       int библиотека, const char *вкл_каталог,
+                       const char **доп_so, size_t число_so, int потоки,
+                       const char *компилятор, int jemalloc, int символы,
+                       int статический);
 void очистка(МассивТокенов *токены, char* буфер);
 
 #endif

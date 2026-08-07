@@ -70,14 +70,23 @@ static void абс_каталог_файла(const char *путь, char *out, si
 }
 
 int скомпилировать_си(const char *путь_си, const char *путь_вывода, int релиз,
-                      int библиотека, const char *вкл_каталог,
-                      const char **доп_so, size_t число_so, int потоки,
-                      const char *компилятор, int jemalloc, int символы)
+                       int библиотека, const char *вкл_каталог,
+                       const char **доп_so, size_t число_so, int потоки,
+                       const char *компилятор, int jemalloc, int символы,
+                       int статический)
 {
     if (!компилятор || !компилятор[0]) компилятор = "cc";
     // jemalloc — только для исполняемых файлов: у .so аллокатор выбирает
     // финальная программа, навязывать интерпозицию в библиотеке нельзя.
     int линк_jemalloc = jemalloc && !библиотека;
+    if (статический && библиотека) {
+        fprintf(stderr, "Ошибка: --статический несовместим с --библиотека (.so).\n");
+        return 1;
+    }
+    if (статический && число_so > 0) {
+        fprintf(stderr, "Ошибка: статическая линковка Konda-библиотек (.so) не поддержана.\n");
+        return 1;
+    }
     // Релиз: -O2 (проверки уже сняты кодогеном → скорость уровня C).
     // Отладка: -O0 -g — быстрая компиляция и удобная отладка; рантайм-проверки
     // из кодогена ловят UB с понятным сообщением.
@@ -94,12 +103,13 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // 16 базовых + «-I каталог» (2) + по 2 на каждую .so (путь + -rpath) + NULL.
     // +1 «-pthread», +1 jemalloc, +3 символы (-rdynamic/-funwind-tables/-g),
     // +5 hardening (-Wl,-z,relro/now/noexecstack + stack-clash/protector-strong).
-    size_t макс_арг = 24 + 2 * число_so + 5;
+    size_t макс_арг = 25 + 2 * число_so + 5;
     const char **argv = calloc(макс_арг, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); return 1; }
     int n = 0;
     argv[n++] = компилятор;
+    if (статический) argv[n++] = "-static";
     argv[n++] = "-std=gnu23";
     argv[n++] = "-Wall";
     argv[n++] = "-Wextra";
@@ -119,8 +129,12 @@ int скомпилировать_си(const char *путь_си, const char *п�
     //     defense-in-depth). Стоит копейки, дистрибутивы включают всем.
     // (-fPIE/ASLR не дублируем — это дефолт линковки; -march=native НЕ ставим —
     //  ломал бы переносимость и кросс.)
-    argv[n++] = "-Wl,-z,relro";
-    argv[n++] = "-Wl,-z,now";
+    // В статическом режиме GOT нет (не PIC) → relro/now бесполезны; noexecstack
+    // сохраняем (стек всё ещё NX).
+    if (!статический) {
+        argv[n++] = "-Wl,-z,relro";
+        argv[n++] = "-Wl,-z,now";
+    }
     argv[n++] = "-Wl,-z,noexecstack";
     argv[n++] = "-fstack-clash-protection";
     argv[n++] = "-fstack-protector-strong";
@@ -143,7 +157,7 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // pointer (поэтому -fno-omit-frame-pointer НЕ нужен — скорость релиза цела);
     // -g в релизе — имена/строки для addr2line (в отладке -g уже добавлен выше).
     if (символы) {
-        argv[n++] = "-rdynamic";
+        if (!статический) argv[n++] = "-rdynamic";
         argv[n++] = "-funwind-tables";
         if (релиз) argv[n++] = "-g";
     }
@@ -167,6 +181,7 @@ int скомпилировать_си(const char *путь_си, const char *п�
     argv[n++] = путь_си;
     // Линковка Konda-библиотек (безопасный путь 2): позиционный .so + rpath на
     // её абсолютный каталог, чтобы .elf находил её при запуске.
+    // В статике число_so == 0 (отвергнуто в начале функции).
     for (size_t i = 0; i < число_so; ++i) {
         char каталог[PATH_MAX];
         абс_каталог_файла(доп_so[i], каталог, sizeof(каталог));
@@ -178,7 +193,10 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // (работает и без dev-пакета). Ставим ПОСЛЕ источника/библиотек, чтобы
     // неопределённые calloc/free программы разрешились в jemalloc, а не libc.
     if (линк_jemalloc) {
-        argv[n++] = "-l:libjemalloc.so.2";
+        // Статический бинарник: -ljemalloc найдёт libjemalloc.a (с активным
+        // -static предпочтение у статической версии); нужен libjemalloc-dev.
+        // Динамический: -l:libjemalloc.so.2 (версионный soname, без dev-пакета).
+        argv[n++] = статический ? "-ljemalloc" : "-l:libjemalloc.so.2";
     }
     argv[n] = nullptr;
 
