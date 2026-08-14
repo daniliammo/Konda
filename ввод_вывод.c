@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "транспилятор.h"   // КОНДА_СУФФИКС_БИБЛ
 
 
 char* прочитать_файл(char *путь_к_файлу, size_t *out_size) {
@@ -87,10 +88,22 @@ int скомпилировать_си(const char *путь_си, const char *п�
         fprintf(stderr, "Ошибка: статическая линковка Konda-библиотек (.so) не поддержана.\n");
         return 1;
     }
+#if defined(__APPLE__)
+    // На macOS полностью статические бинарники не поддержаны (нет статической
+    // libSystem — Apple документирует это официально). Отказываем понятно, а не
+    // ловим позднее ошибку линковщика.
+    if (статический) {
+        fprintf(stderr, "Ошибка: --статический не поддержан на macOS (нет статической libSystem).\n");
+        return 1;
+    }
+#endif
     // Релиз: -O2 (проверки уже сняты кодогеном → скорость уровня C).
     // Отладка: -O0 -g — быстрая компиляция и удобная отладка; рантайм-проверки
     // из кодогена ловят UB с понятным сообщением.
-    const char *суффикс = библиотека ? "so" : "elf";
+    // Суффикс библиотеки — из транспилятор.h (КОНДА_СУФФИКС_БИБЛ = «so»/«dylib»
+    // по хосту), исполняемый — всегда «elf» (условное имя проекта, не значимо
+    // для ОС: и Linux, и macOS запускают файл по x-биту, а не суффиксу).
+    const char *суффикс = библиотека ? КОНДА_СУФФИКС_БИБЛ : "elf";
     char путь_с_суффиксом[600];
     snprintf(путь_с_суффиксом, sizeof(путь_с_суффиксом), "%s.%s",
              путь_вывода, суффикс);
@@ -115,28 +128,28 @@ int скомпилировать_си(const char *путь_си, const char *п�
     argv[n++] = "-Wextra";
     // Hardening — переносимая защита с НУЛЕВОЙ ценой на горячем пути (инвариант
     // №1 цел). На хост-gcc большинство этого — дефолт, но кросс-тулчейны/vanilla
-    // clang/musl их могут НЕ включать, поэтому задаём ЯВНО (страховка на цель):
-    //   • -Wl,-z,relro,-z,now — full RELRO: GOT только для чтения после старта;
-    //     цена лишь на загрузке, горячий путь не тронут;
-    //   • -Wl,-z,noexecstack — неисполняемый стек (NX), ноль цены;
-    //   • -fstack-clash-protection — зондирование больших кадров, чтобы
-    //     аллокация НЕ ПЕРЕПРЫГНУЛА guard-страницу. Прямо усиливает защиту стека
-    //     из рекурсии: обработчик ловит переполнение постфактум, а этот флаг не
-    //     даёт перепрыгнуть страницу вовсе; near-zero (зонд только на крупных
-    //     кадрах);
-    //   • -fstack-protector-strong — канарейка против переполнения буфера в
-    //     кадре (в safe-коде их нет, но в «небезопасно»/при баге кодогена —
-    //     defense-in-depth). Стоит копейки, дистрибутивы включают всем.
+    // clang/musl их могут НЕ включать, поэтому задаём ЯВНО (страховка на цель).
+    // ПОРТИРУЕМОСТЬ (Linux/BSD/macOS):
+    //   • -Wl,-z,relro/-z,now/-z,noexecstack — GNU/LLD-опции, есть на Linux и
+    //     BSD (LLD/bfd-порт). На macOS ld64 их НЕ ЗНАЕТ (упадёт «unknown option
+    //     -z») — там NX-стек и защита GOT обеспечиваются форматом Mach-O
+    //     платформой, флаги не нужны;
+    //   • -fstack-clash-protection — есть в gcc≥8 и clang≥13 на Linux/BSD; на
+    //     AppleClang номера версий свои и поддержка исторически неровная —
+    //     на Darwin не ставим, чтобы не ломать сборку;
+    //   • -fstack-protector-strong — переносим (gcc/clang на всех POSIX).
     // (-fPIE/ASLR не дублируем — это дефолт линковки; -march=native НЕ ставим —
     //  ломал бы переносимость и кросс.)
     // В статическом режиме GOT нет (не PIC) → relro/now бесполезны; noexecstack
     // сохраняем (стек всё ещё NX).
+#if !defined(__APPLE__)
     if (!статический) {
         argv[n++] = "-Wl,-z,relro";
         argv[n++] = "-Wl,-z,now";
     }
     argv[n++] = "-Wl,-z,noexecstack";
     argv[n++] = "-fstack-clash-protection";
+#endif
     argv[n++] = "-fstack-protector-strong";
     if (релиз) {
         argv[n++] = "-O2";
@@ -151,18 +164,40 @@ int скомпилировать_си(const char *путь_си, const char *п�
     }
     // Читаемость бэктрейса (конда_прервать вшит в рантайм всегда). Эти флаги
     // влияют только на РАЗМЕР бинарника, не на скорость, поэтому включены по
-    // умолчанию и снимаются флагом «--без-символов» (трейс останется, но
-    // адресами вместо имён): -rdynamic — символы в .dynsym для
-    // backtrace_symbols_fd; -funwind-tables — .eh_frame для раскрутки БЕЗ frame
-    // pointer (поэтому -fno-omit-frame-pointer НЕ нужен — скорость релиза цела);
-    // -g в релизе — имена/строки для addr2line (в отладке -g уже добавлен выше).
+    // умолчанию и снимаются флагом «--без-символов»:
+    //   • -rdynamic — GNU-ld опция для .dynsym → backtrace_symbols_fd на ELF;
+    //     на macOS не нужна (dyld всегда экспортирует символы для CoreSymbolication;
+    //     backtrace_symbols на Darwin читает Mach-O напрямую);
+    //   • -funwind-tables — .eh_frame для раскрутки БЕЗ frame pointer;
+    //     переносимо (gcc/clang на всех POSIX). Поэтому -fno-omit-frame-pointer
+    //     НЕ нужен — скорость релиза цела;
+    //   • -g в релизе — имена/строки для addr2line/atos (в отладке уже выше).
     if (символы) {
+#if !defined(__APPLE__)
         if (!статический) argv[n++] = "-rdynamic";
+#endif
         argv[n++] = "-funwind-tables";
         if (релиз) argv[n++] = "-g";
     }
     if (библиотека) {
+        // -fPIC — переносимо; форма разделяемой библиотеки различается:
+        // ELF (Linux/BSD): «-shared» → .so;
+        // Mach-O (macOS):   «-dynamiclib» → .dylib + install_name (@rpath —
+        //                   потребитель находит по своему -rpath).
+#if defined(__APPLE__)
+        argv[n++] = "-dynamiclib";
+        // install_name с @rpath: потребитель (bundle/elf) сам определит путь
+        // через свой -Wl,-rpath,<каталог> — так же, как -rpath на ELF.
+        char *inst = calloc(1, PATH_MAX + 64);
+        if (inst) {
+            const char *базовое = strrchr(путь_с_суффиксом, '/');
+            базовое = базовое ? базовое + 1 : путь_с_суффиксом;
+            snprintf(inst, PATH_MAX + 64, "-Wl,-install_name,@rpath/%s", базовое);
+            argv[n++] = inst;   // намеренно утекает вместе с процессом (короткоживущим)
+        }
+#else
         argv[n++] = "-shared";
+#endif
         argv[n++] = "-fPIC";
     }
     // Потоки: «-pthread» и для компиляции, и для линковки. Добавляем только
@@ -189,14 +224,22 @@ int скомпилировать_си(const char *путь_си, const char *п�
         argv[n++] = доп_so[i];
         argv[n++] = rpaths[i];
     }
-    // jemalloc — интерпозиция malloc/calloc/free: линкуем по версионному soname
-    // (работает и без dev-пакета). Ставим ПОСЛЕ источника/библиотек, чтобы
-    // неопределённые calloc/free программы разрешились в jemalloc, а не libc.
+    // jemalloc — интерпозиция malloc/calloc/free. Ставим ПОСЛЕ источника/
+    // библиотек, чтобы неопределённые calloc/free программы разрешились в
+    // jemalloc, а не libc. Форма линковки — по хосту:
+    //  • Linux (GNU-ld/LLD): «-l:libjemalloc.so.2» — версионный soname без
+    //    dev-symlink (пакет libjemalloc2 достаточен, libjemalloc-dev не нужен);
+    //    «-l:name» — GNU-расширение, LLD его поддерживает;
+    //  • BSD/macOS: «-l:name» их линковщики (bsd ld/ld64) не знают, поэтому
+    //    обычное «-ljemalloc» (Homebrew/pkg дают libjemalloc.dylib/.so
+    //    и dev-symlink);
+    //  • статика (-static, только Linux): «-ljemalloc» найдёт libjemalloc.a.
     if (линк_jemalloc) {
-        // Статический бинарник: -ljemalloc найдёт libjemalloc.a (с активным
-        // -static предпочтение у статической версии); нужен libjemalloc-dev.
-        // Динамический: -l:libjemalloc.so.2 (версионный soname, без dev-пакета).
+#if defined(__linux__)
         argv[n++] = статический ? "-ljemalloc" : "-l:libjemalloc.so.2";
+#else
+        argv[n++] = "-ljemalloc";
+#endif
     }
     argv[n] = nullptr;
 

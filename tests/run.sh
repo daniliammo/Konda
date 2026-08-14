@@ -10962,6 +10962,20 @@ if grep -q -- "libjemalloc" "$TMP/либа.log"; then
     cat "$TMP/либа.log" >&2; fail "библиотека (.so) не должна навязывать jemalloc"
 fi
 
+# OS-гейтинг флагов (§39): на Linux эмитятся ELF/GNU-ld флаги, а macOS-специфичные
+# (-dynamiclib / @rpath / -install_name) НЕ протекают. Тест защищает от регрессии
+# «случайно эмитим Darwin-флаг на Linux» — линкер молча их не сожрёт.
+case "$(uname -s)" in
+Linux)
+    for f in "-dynamiclib" "-install_name" "@rpath" "@loader_path"; do
+        if grep -qF -- "$f" "$TMP/деф.log"; then
+            cat "$TMP/деф.log" >&2
+            fail "Darwin-специфичный флаг «$f» не должен эмититься на Linux"
+        fi
+    done
+    ;;
+esac
+
 # --статический (--static): статическая линковка исполняемого файла.
 # С --аллокатор=libc (libc.a есть на любой системе со статической линковкой).
 "$BIN" --статический --аллокатор=libc флаги_сборки.конда >"$TMP/статич.log" 2>&1 || {

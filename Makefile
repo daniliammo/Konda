@@ -40,7 +40,10 @@ WERROR ?= -Werror
 CFLAGS += $(WERROR)
 LDFLAGS ?=
 
-ifneq ($(filter $(UNAME_S),Linux FreeBSD OpenBSD),)
+# ELF-хосты (Linux + все BSD) — единая ветвь: разделяемая библиотека «.so»,
+# `-shared`, GNU-ld rpath с `$ORIGIN`, `--gc-sections`. NetBSD/DragonFly добавлены
+# для полноты POSIX-семейства (тот же формат Mach-O — только у Darwin).
+ifneq ($(filter $(UNAME_S),Linux FreeBSD OpenBSD NetBSD DragonFly),)
 	LDFLAGS += -Wl,--gc-sections
 	LIB_NAME = libkonda-transpiler.so
 	SHARED_FLAGS = -shared
@@ -49,11 +52,15 @@ ifneq ($(filter $(UNAME_S),Linux FreeBSD OpenBSD),)
 	RPATH_FLAGS = -Wl,-rpath,'$$ORIGIN' -Wl,-rpath,'$$ORIGIN/../lib'
 
 else ifeq ($(UNAME_S),Darwin)
+	# macOS: Mach-O динамическая либа «.dylib» + install_name с @rpath;
+	# потребитель ищет по своему -rpath (@loader_path). `--gc-sections` — GNU-ld
+	# опция, у ld64 её нет (мёртвый код Mach-O выпалывается по-своему, `-dead_strip`
+	# — но это уже оптимизация размера, не обязана быть везде — не ставим).
 	LIB_NAME = libkonda-transpiler.dylib
 	SHARED_FLAGS = -dynamiclib -Wl,-install_name,@rpath/$(LIB_NAME)
 	RPATH_FLAGS = -Wl,-rpath,@loader_path -Wl,-rpath,@loader_path/../lib
 else
-	$(error Неподдерживаемая операционная система: $(UNAME_S))
+	$(error Неподдерживаемая операционная система: $(UNAME_S) (ожидались Linux/FreeBSD/OpenBSD/NetBSD/DragonFly/Darwin))
 endif
 
 # Разделяемая библиотека: вся логика транспиляции, кроме CLI (основа.c).
