@@ -74,7 +74,7 @@ int скомпилировать_си(const char *путь_си, const char *п�
                        int библиотека, const char *вкл_каталог,
                        const char **доп_so, size_t число_so, int потоки,
                        const char *компилятор, int jemalloc, int символы,
-                       int статический)
+                       int статический, int использует_embed)
 {
     if (!компилятор || !компилятор[0]) компилятор = "cc";
     // jemalloc — только для исполняемых файлов: у .so аллокатор выбирает
@@ -116,10 +116,11 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // 16 базовых + «-I каталог» (2) + по 2 на каждую .so (путь + -rpath) + NULL.
     // +1 «-pthread», +1 jemalloc, +3 символы (-rdynamic/-funwind-tables/-g),
     // +5 hardening (-Wl,-z,relro/now/noexecstack + stack-clash/protector-strong).
-    size_t макс_арг = 25 + 2 * число_so + 5;
+    size_t макс_арг = 25 + 2 * число_so + 5 + 1 /* --embed-dir */;
     const char **argv = calloc(макс_арг, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); return 1; }
+    char embed_dir[PATH_MAX + 16];  // «--embed-dir=<каталог>» — живёт до execvp
     int n = 0;
     argv[n++] = компилятор;
     if (статический) argv[n++] = "-static";
@@ -210,6 +211,16 @@ int скомпилировать_си(const char *путь_си, const char *п�
     if (вкл_каталог && вкл_каталог[0]) {
         argv[n++] = "-I";
         argv[n++] = вкл_каталог;
+        // «встроить("файл")» (C23 #embed): «#embed "путь"» ищет файл рядом с .c
+        // (вывод/) и по «--embed-dir», но НЕ по «-I». Даём каталог исходника через
+        // «--embed-dir», чтобы относительные пути «встроить» разрешались как у
+        // «#содержит». Флаг ставим ТОЛЬКО когда embed реально используется — иначе
+        // не навязываем его компилятору (старый cc без #embed на не-embed сборках
+        // не должен падать на неизвестном флаге).
+        if (использует_embed) {
+            snprintf(embed_dir, sizeof(embed_dir), "--embed-dir=%s", вкл_каталог);
+            argv[n++] = embed_dir;
+        }
     }
     argv[n++] = "-o";
     argv[n++] = путь_с_суффиксом;
