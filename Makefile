@@ -27,9 +27,9 @@ else
   endif
 endif
 
-CFLAGS ?= -Wall -Wextra -O2 -std=gnu23
 # Объекты идут в разделяемую библиотеку, поэтому собираем позиционно-независимо.
-CFLAGS += -fPIC
+CFLAGS ?= -Wall -Wextra -O2 -flto=auto -std=gnu23 -fPIC
+
 # Предупреждения — ОШИБКИ: транспилятор не должен собираться с варнингами (CI
 # ловит регрессии сразу). Проверено чистым на gcc-13/14/15 при -O2. Отключаемо
 # через «make WERROR=» — на случай нового компилятора с новым классом варнингов
@@ -38,7 +38,7 @@ CFLAGS += -fPIC
 # (у них при -O0 есть безобидные -Wformat-truncation, не относящиеся к сборке).
 WERROR ?= -Werror
 CFLAGS += $(WERROR)
-LDFLAGS ?=
+LDFLAGS ?= -flto=auto
 
 # ELF-хосты (Linux + все BSD) — единая ветвь: разделяемая библиотека «.so»,
 # `-shared`, GNU-ld rpath с `$ORIGIN`, `--gc-sections`. NetBSD/DragonFly добавлены
