@@ -49,7 +49,7 @@ ifneq ($(filter $(UNAME_S),Linux FreeBSD OpenBSD NetBSD DragonFly),)
 	SHARED_FLAGS = -shared
 	# При локальной сборке библиотека лежит рядом с CLI; после make install —
 	# в ../lib относительно $(PREFIX)/bin/konda.
-	RPATH_FLAGS = -Wl,-rpath,'$$ORIGIN' -Wl,-rpath,'$$ORIGIN/../lib'
+	RPATH_FLAGS = -Wl,-rpath,'$$ORIGIN' -Wl,-rpath,'$$ORIGIN/../lib' -Wl,-z,relro,-z,now
 
 else ifeq ($(UNAME_S),Darwin)
 	# macOS: Mach-O динамическая либа «.dylib» + install_name с @rpath;
@@ -58,7 +58,7 @@ else ifeq ($(UNAME_S),Darwin)
 	# — но это уже оптимизация размера, не обязана быть везде — не ставим).
 	LIB_NAME = libkonda-transpiler.dylib
 	SHARED_FLAGS = -dynamiclib -Wl,-install_name,@rpath/$(LIB_NAME)
-	RPATH_FLAGS = -Wl,-rpath,@loader_path -Wl,-rpath,@loader_path/../lib
+	RPATH_FLAGS = -Wl,-rpath,@loader_path -Wl,-rpath,@loader_path/../lib -Wl,-bind_at_load
 else
 	$(error Неподдерживаемая операционная система: $(UNAME_S) (ожидались Linux/FreeBSD/OpenBSD/NetBSD/DragonFly/Darwin))
 endif
