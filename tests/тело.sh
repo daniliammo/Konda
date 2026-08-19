@@ -12025,6 +12025,21 @@ done
 grep -q -- "-fstack-clash-protection" "$TMP/деф_рел.log" || {
     cat "$TMP/деф_рел.log" >&2; fail "hardening должен ставиться и в релизе"; }
 
+# §48 Релиз-оптимизации без нарушения инварианта №1: -fno-math-errno разрешает
+# gcc векторизовать sqrt/exp/log (снимает искусственный барьер errno-побочки);
+# -fno-plt заменяет PLT-thunk на прямой indirect через GOT (совместимо с FULL
+# RELRO из §28: «-Wl,-z,now» уже ставится → ленивое разрешение выключено).
+grep -q -- "-fno-math-errno" "$TMP/деф_рел.log" || {
+    cat "$TMP/деф_рел.log" >&2; fail "релиз: -fno-math-errno должен разрешать векторизацию math"; }
+grep -q -- "-fno-plt" "$TMP/деф_рел.log" || {
+    cat "$TMP/деф_рел.log" >&2; fail "релиз: -fno-plt должен экономить прыжок PLT-thunk"; }
+# Оба флага — ТОЛЬКО релиз (в отладке errno-семантика помогает диагностике,
+# а PLT-thunk безобиден). Проверяем: в дефолтной (отладочной) сборке их нет.
+if grep -q -- "-fno-math-errno" "$TMP/деф.log"; then
+    cat "$TMP/деф.log" >&2; fail "-fno-math-errno не должен ставиться в отладке"; fi
+if grep -q -- "-fno-plt" "$TMP/деф.log"; then
+    cat "$TMP/деф.log" >&2; fail "-fno-plt не должен ставиться в отладке"; fi
+
 # --аллокатор=libc: jemalloc не линкуется.
 "$BIN" --аллокатор=libc флаги_сборки.конда >"$TMP/лкц.log" 2>&1
 if grep -q -- "libjemalloc" "$TMP/лкц.log"; then
