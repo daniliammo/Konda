@@ -28,7 +28,7 @@ else
 endif
 
 # Объекты идут в разделяемую библиотеку, поэтому собираем позиционно-независимо.
-CFLAGS ?= -Wall -Wextra -O2 -flto=auto -std=gnu23 -fPIC
+CFLAGS ?= -Wall -Wextra -O2 -flto=auto -std=gnu23 -fPIC -fno-semantic-interposition
 
 # Предупреждения — ОШИБКИ: транспилятор не должен собираться с варнингами (CI
 # ловит регрессии сразу). Проверено чистым на gcc-13/14/15 при -O2. Отключаемо
