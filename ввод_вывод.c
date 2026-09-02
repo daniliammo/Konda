@@ -74,7 +74,8 @@ int скомпилировать_си(const char *путь_си, const char *п�
                        int библиотека, const char *вкл_каталог,
                        const char **доп_so, size_t число_so, int потоки,
                        const char *компилятор, int jemalloc, int символы,
-                       int статический, int использует_embed)
+                       int статический, int использует_embed,
+                       int предупреждения_как_ошибки)
 {
     if (!компилятор || !компилятор[0]) компилятор = "cc";
     // jemalloc — только для исполняемых файлов: у .so аллокатор выбирает
@@ -116,7 +117,8 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // 16 базовых + «-I каталог» (2) + по 2 на каждую .so (путь + -rpath) + NULL.
     // +1 «-pthread», +1 jemalloc, +3 символы (-rdynamic/-funwind-tables/-g),
     // +5 hardening (-Wl,-z,relro/now/noexecstack + stack-clash/protector-strong).
-    size_t макс_арг = 25 + 2 * число_so + 5 + 1 /* --embed-dir */;
+    size_t макс_арг = 25 + 2 * число_so + 5 + 1 /* --embed-dir */
+                      + 6 /* -Werror + пять -Wno-… (защита clean-билда) */;
     const char **argv = calloc(макс_арг, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); return 1; }
@@ -127,6 +129,26 @@ int скомпилировать_си(const char *путь_си, const char *п�
     argv[n++] = "-std=gnu23";
     argv[n++] = "-Wall";
     argv[n++] = "-Wextra";
+    // Защита clean-билда сгенерированного кода: предупреждение = ошибка. Классы,
+    // отражающие ОСОЗНАННЫЙ кодоген Konda (а не баг), исключаем:
+    //   • sign-compare — «длина» типизируется как целое32 (знаковое), чтобы
+    //     обычный знаковый счётчик «целое32 и» не давал sign-compare с size_t;
+    //     цена — беззнаковый счётчик даёт обратный sign-compare. Единым
+    //     контекстно-независимым кастом оба случая не закрыть; корректность
+    //     сравнений гарантирует типизатор Konda, не C. → -Wno-sign-compare.
+    //   • unused-{variable,parameter,function,but-set-variable} — язык ДОПУСКАЕТ
+    //     неиспользуемые объявления (это не баг; на уровне Konda не диагностируется).
+    // Всё корректностно-значимое (format, format-security, implicit-declaration,
+    // несовпадение указателей/типов, uninitialized, missing-field-initializers,
+    // discarded-qualifiers, return-type, infinite-recursion, overflow…) — жёстко.
+    if (предупреждения_как_ошибки) {
+        argv[n++] = "-Werror";
+        argv[n++] = "-Wno-sign-compare";
+        argv[n++] = "-Wno-unused-parameter";
+        argv[n++] = "-Wno-unused-variable";
+        argv[n++] = "-Wno-unused-function";
+        argv[n++] = "-Wno-unused-but-set-variable";
+    }
     // Hardening — переносимая защита с НУЛЕВОЙ ценой на горячем пути (инвариант
     // №1 цел). На хост-gcc большинство этого — дефолт, но кросс-тулчейны/vanilla
     // clang/musl их могут НЕ включать, поэтому задаём ЯВНО (страховка на цель).
