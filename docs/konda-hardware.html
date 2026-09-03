@@ -1,0 +1,648 @@
+<title>Konda до железа</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ground:#ECEEF0; --surface:#F7F8FA; --surface-2:#FFFFFF;
+    --ink:#17212B; --ink-soft:#48586B; --rule:#D2D8DE; --rule-soft:#E2E6EA;
+    --copper:#A9531F; --copper-2:#8E4416;
+    --safe:#2C7A57; --unsafe:#B03A2C; --warn:#876000; --ty:#256B6B;
+    --code-bg:#EAEDF0; --code-ink:#25313D;
+    --shadow:0 1px 2px rgba(20,30,42,.05),0 6px 22px -12px rgba(20,30,42,.18);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E141A; --surface:#141C24; --surface-2:#18222C;
+      --ink:#E6EAEE; --ink-soft:#9BAAB8; --rule:#28323C; --rule-soft:#1F2833;
+      --copper:#D98A55; --copper-2:#E7A375;
+      --safe:#5FB98C; --unsafe:#E27C6E; --warn:#D2A43C; --ty:#6FB2B2;
+      --code-bg:#0B1218; --code-ink:#CBD5DE;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E141A; --surface:#141C24; --surface-2:#18222C;
+    --ink:#E6EAEE; --ink-soft:#9BAAB8; --rule:#28323C; --rule-soft:#1F2833;
+    --copper:#D98A55; --copper-2:#E7A375;
+    --safe:#5FB98C; --unsafe:#E27C6E; --warn:#D2A43C; --ty:#6FB2B2;
+    --code-bg:#0B1218; --code-ink:#CBD5DE;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16.5px; line-height:1.62; letter-spacing:.005em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:0 24px}
+  a{color:var(--copper)}
+
+  /* ── mono / labels ── */
+  .mono{font-family:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+    letter-spacing:.22em; text-transform:uppercase; color:var(--copper);
+  }
+
+  /* ── hero ── */
+  header.hero{padding:76px 0 30px; border-bottom:1px solid var(--rule)}
+  .hero .addr{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink-soft);
+    letter-spacing:.04em; margin:0 0 20px;
+  }
+  .hero .addr b{color:var(--copper); font-weight:600}
+  h1{
+    font-size:clamp(2.5rem,7vw,4.2rem); line-height:1.02; font-weight:700;
+    letter-spacing:-.02em; margin:.1em 0 .28em; text-wrap:balance;
+  }
+  .hero .lede{
+    font-size:clamp(1.08rem,2.4vw,1.3rem); color:var(--ink-soft);
+    max-width:40ch; margin:0; font-weight:400;
+  }
+  .hero .lede b{color:var(--ink); font-weight:600}
+
+  /* ── principle callout ── */
+  .principle{
+    margin:34px 0 8px; padding:22px 24px; background:var(--surface-2);
+    border:1px solid var(--rule); border-left:3px solid var(--copper);
+    border-radius:8px; box-shadow:var(--shadow);
+  }
+  .principle p{margin:0; font-size:1.02rem}
+  .principle .tag{
+    display:block; font-family:"IBM Plex Mono",monospace; font-size:11px;
+    font-weight:600; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--copper); margin-bottom:7px;
+  }
+
+  section{padding:46px 0; border-bottom:1px solid var(--rule)}
+  h2{
+    font-size:clamp(1.5rem,4vw,2.05rem); font-weight:700; letter-spacing:-.015em;
+    margin:.1em 0 .1em; text-wrap:balance;
+  }
+  h2 .num{font-family:"IBM Plex Mono",monospace; color:var(--copper); font-weight:600; margin-right:.5ch}
+  .sec-intro{color:var(--ink-soft); max-width:62ch; margin:.5em 0 0; font-size:1.02rem}
+  h3{font-size:1.18rem; margin:0}
+
+  p{max-width:66ch}
+
+  /* ── status chips ── */
+  .chips{display:flex; flex-wrap:wrap; gap:9px; margin:22px 0 4px; padding:0; list-style:none}
+  .chips li{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--ink);
+    background:var(--surface); border:1px solid var(--rule); border-radius:100px;
+    padding:5px 12px; display:flex; align-items:baseline; gap:7px;
+  }
+  .chips li b{color:var(--copper); font-weight:600; font-size:11px; letter-spacing:.03em}
+
+  /* ── spec entry ── */
+  .spec{
+    background:var(--surface-2); border:1px solid var(--rule); border-radius:11px;
+    padding:22px 22px 20px; margin:20px 0; box-shadow:var(--shadow);
+  }
+  .spec-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+  .spec-id{
+    font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:12px;
+    color:#fff; background:var(--copper); border-radius:5px; padding:3px 8px;
+    letter-spacing:.05em; flex:none;
+  }
+  .spec-head h3{letter-spacing:-.01em}
+  .spec-head .kw{font-family:"IBM Plex Mono",monospace; color:var(--copper); font-weight:600}
+  .spec .why{color:var(--ink-soft); margin:9px 0 15px; font-size:.98rem}
+
+  .badges{display:flex; flex-wrap:wrap; gap:7px; margin:2px 0 15px}
+  .badge{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500;
+    letter-spacing:.02em; padding:3px 9px; border-radius:5px; border:1px solid;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .badge.zero{color:var(--safe); border-color:color-mix(in srgb,var(--safe) 40%,transparent); background:color-mix(in srgb,var(--safe) 9%,transparent)}
+  .badge.gate{color:var(--unsafe); border-color:color-mix(in srgb,var(--unsafe) 40%,transparent); background:color-mix(in srgb,var(--unsafe) 9%,transparent)}
+  .badge.inv{color:var(--ink-soft); border-color:var(--rule); background:var(--surface)}
+  .badge.sugar{color:var(--ty); border-color:color-mix(in srgb,var(--ty) 40%,transparent); background:color-mix(in srgb,var(--ty) 9%,transparent)}
+
+  /* ── code compare ── */
+  .cmp{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px}
+  @media (max-width:640px){.cmp{grid-template-columns:1fr}}
+  .pane{border:1px solid var(--rule); border-radius:8px; overflow:hidden; background:var(--code-bg); min-width:0}
+  .pane .cap{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; font-weight:600;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft);
+    padding:7px 12px; border-bottom:1px solid var(--rule); background:var(--surface);
+  }
+  .pane.now .cap{color:var(--ink-soft)}
+  .pane.next .cap{color:var(--copper)}
+  pre{
+    margin:0; padding:13px 14px; overflow-x:auto; color:var(--code-ink);
+    font-family:"IBM Plex Mono",monospace; font-size:12.6px; line-height:1.62;
+    tab-size:2;
+  }
+  code{font-family:"IBM Plex Mono",monospace}
+  .k{color:var(--copper); font-weight:600}
+  .c{color:var(--ink-soft); font-style:italic}
+  .t{color:var(--ty)}
+  .n{color:var(--code-ink); opacity:.75}
+
+  /* ── priority table ── */
+  .tablewrap{overflow-x:auto; margin:22px 0 6px; border:1px solid var(--rule); border-radius:10px}
+  table{border-collapse:collapse; width:100%; font-size:14.5px; min-width:640px}
+  thead th{
+    text-align:left; font-family:"IBM Plex Mono",monospace; font-size:11px;
+    font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft);
+    padding:12px 14px; border-bottom:1px solid var(--rule); background:var(--surface); white-space:nowrap;
+  }
+  tbody td{padding:11px 14px; border-bottom:1px solid var(--rule-soft); vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  td .f{font-family:"IBM Plex Mono",monospace; font-weight:600; color:var(--ink); font-size:13.5px}
+  td .id{font-family:"IBM Plex Mono",monospace; color:var(--copper); font-size:12px}
+  .tier{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:12px; white-space:nowrap}
+  .tier.t1{color:var(--unsafe)} .tier.t2{color:var(--copper)} .tier.t3{color:var(--warn)} .tier.t4{color:var(--ty)}
+  .dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:2px; vertical-align:middle}
+
+  /* ── tiers legend / guardrails ── */
+  .guard{display:grid; gap:12px; margin-top:20px}
+  .guard .g{
+    background:var(--surface-2); border:1px solid var(--rule); border-radius:9px;
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .guard .g h4{margin:0 0 5px; font-size:1rem; display:flex; align-items:center; gap:9px}
+  .guard .g h4 .m{font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; color:var(--unsafe); border:1px solid color-mix(in srgb,var(--unsafe) 40%,transparent); border-radius:4px; padding:1px 6px}
+  .guard .g p{margin:0; color:var(--ink-soft); font-size:.95rem; max-width:none}
+
+  .start{display:grid; grid-template-columns:auto 1fr; gap:4px 18px; margin-top:18px; align-items:baseline}
+  .start .s-n{font-family:"IBM Plex Mono",monospace; color:var(--copper); font-weight:600; font-size:13px; padding:8px 0}
+  .start .s-b{padding:8px 0; border-top:1px solid var(--rule-soft)}
+  .start .s-n{border-top:1px solid var(--rule-soft)}
+  .start .s-n:first-of-type,.start .s-b:first-of-type{border-top:none}
+  .start .s-b b{font-family:"IBM Plex Mono",monospace; color:var(--ink); font-weight:600; font-size:13.5px}
+
+  footer{padding:40px 0 64px; color:var(--ink-soft); font-size:13.5px}
+  footer .mono{color:var(--ink-soft)}
+  footer b{color:var(--ink)}
+
+  @media (prefers-reduced-motion:no-preference){
+    a{transition:color .15s ease}
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="addr mono">КОНДА · СИСТЕМНЫЙ СЛОЙ &nbsp;/&nbsp; целевой регистр <b>0x4002_0000</b> &nbsp;/&nbsp; доклад по развитию языка</p>
+    <h1>Konda до&nbsp;железа</h1>
+    <p class="lede">Что нужно добавить, чтобы на Konda писались <b>драйверы и прошивки как на&nbsp;C</b> — не теряя нулевой цены безопасности и близости кода к&nbsp;псевдокоду.</p>
+  </header>
+
+  <div class="principle">
+    <span class="tag mono">Рамка доклада</span>
+    <p>Konda уже безопаснее C и во многом выразительнее. Пробел — не в безопасности, а в двух осях: <b>доступ к «голому» железу</b> (MMIO, прерывания, bare-metal) и <b>выразительность</b> (сахар, приближающий код к псевдокоду). Каждая фича ниже спроектирована так, чтобы <b>инвариант №1 остался цел</b>: любая безопасность — статическая, релиз работает со скоростью C. Опасное к железу — за гейтом <span class="mono" style="color:var(--unsafe)">небезопасно&nbsp;{}</span> либо спрятано в <b>типобезопасную обёртку нулевой цены</b> (как регистр-хендл).</p>
+  </div>
+
+  <section>
+    <p class="eyebrow">Точка отсчёта</p>
+    <h2>Что в языке уже есть</h2>
+    <p class="sec-intro">Низкоуровневый фундамент частично заложен — предлагать это повторно не нужно. Отталкиваемся отсюда.</p>
+    <ul class="chips">
+      <li><b>§60</b> вставка ассемблера <span class="mono">асм(…)</span></li>
+      <li><b>§49</b> атомики <span class="mono">атом&lt;T&gt;</span> + memory_order</li>
+      <li><b>§41</b> <span class="mono">#embed</span> / <span class="mono">выровнять(N)</span></li>
+      <li><b>§8</b> побитовые <span class="mono">&amp; | ^ &lt;&lt; &gt;&gt; ~</span></li>
+      <li><b>§14</b> интероп C: <span class="mono">внешняя</span>, <span class="mono">внешний тип</span></li>
+      <li><b>§30</b> кастомный аллокатор (пул во внеш. памяти)</li>
+      <li>союз <span class="mono">союз</span> + реинтерпрет</li>
+      <li>гейт <span class="mono">небезопасно {}</span></li>
+      <li>точные целые <span class="mono">целое8…64</span>, <span class="mono">байт</span></li>
+      <li><span class="mono">--без-стандартной-библиотеки</span></li>
+    </ul>
+  </section>
+
+  <!-- ═══════════ BLOCK A ═══════════ -->
+  <section>
+    <p class="eyebrow">Блок A · без этого нет драйверов</p>
+    <h2><span class="num mono">A.</span>Системный слой: железо напрямую</h2>
+    <p class="sec-intro">MMIO, регистры, прерывания, bare-metal. Здесь Konda обязана дотянуться ровно туда, куда достаёт C — но с типами и статическими проверками там, где они бесплатны.</p>
+
+    <!-- A1 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">A1</span>
+        <h3><span class="kw">изменчивый&lt;T&gt;</span> — доступ к MMIO-регистрам</h3>
+      </div>
+      <p class="why">Драйвер немыслим без volatile: чтение/запись регистра нельзя выкидывать и переупорядочивать. Сейчас это выразимо только через <span class="mono">асм</span>. Нужен <b>типизированный регистр-хендл</b>: адрес формируется один раз за гейтом, дальше доступ <b>безопасен</b> и компилируется в один volatile load/store.</p>
+      <div class="badges">
+        <span class="badge zero">0 рантайма</span>
+        <span class="badge gate">адрес — за небезопасно</span>
+        <span class="badge inv">инв. №1 · №2</span>
+      </div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">C</div><pre><span class="c">// сырой volatile, ничем не защищён</span>
+<span class="t">volatile uint32_t</span> *UART = (<span class="t">void</span>*)0x40011000;
+*UART = 0x1;
+<span class="t">uint32_t</span> s = UART[<span class="n">1</span>];</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">изменчивый</span> UART_DR <span class="k">по адресу</span> 0x4001_1000
+<span class="c">// хендл типизирован; доступ — безопасный,</span>
+<span class="c">// границы регистрового блока статичны</span>
+UART_DR.<span class="t">записать</span>(0x1)
+<span class="k">пусть</span> s = UART_DR.<span class="t">прочитать</span>()</pre></div>
+      </div>
+    </article>
+
+    <!-- A2 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">A2</span>
+        <h3>Регистровые блоки: <span class="kw">структура по адресу</span></h3>
+      </div>
+      <p class="why">Периферия — это struct полей по фиксированному базовому адресу (SVD-модель). Хочется описать блок один раз и обращаться по именам полей, а не по смещениям. Раскладка проверяется статически (<span class="mono">выровнять</span>/смещения), доступ — volatile.</p>
+      <div class="badges">
+        <span class="badge zero">0 рантайма</span>
+        <span class="badge sugar">читаемость</span>
+        <span class="badge inv">инв. №1</span>
+      </div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">C</div><pre><span class="k">struct</span> USART { <span class="t">volatile uint32_t</span> SR, DR, BRR; };
+<span class="k">#define</span> USART1 ((<span class="k">struct</span> USART*)0x40011000)
+USART1->BRR = <span class="n">0x1A1</span>;</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">изменчивая структура</span> USART {
+  <span class="t">целое32</span> SR; <span class="t">целое32</span> DR; <span class="t">целое32</span> BRR;
+}
+<span class="k">пусть</span> USART1 = USART <span class="k">по адресу</span> 0x4001_1000
+USART1.BRR = 0x1A1   <span class="c">// → volatile store</span></pre></div>
+      </div>
+    </article>
+
+    <!-- A3 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">A3</span>
+        <h3>Битовые поля и <span class="kw">упакованная структура</span></h3>
+      </div>
+      <p class="why">Регистр — это именованные битовые поля (<span class="mono">EN</span>=бит&nbsp;0, <span class="mono">BAUD</span>=биты&nbsp;15:4). Побитовые операции есть (§8), но ручные маски — источник ошибок. Нужны <b>типизированные поля с проверкой ширины на этапе компиляции</b> и <b>упакованная раскладка</b> для протоколов/DMA-дескрипторов.</p>
+      <div class="badges">
+        <span class="badge zero">0 рантайма</span>
+        <span class="badge inv">статическая ширина полей</span>
+        <span class="badge sugar">меньше масок вручную</span>
+      </div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">C</div><pre><span class="c">// маска/сдвиг руками — легко ошибиться</span>
+CR1 = (CR1 &amp; ~(0xFFF &lt;&lt; <span class="n">4</span>)) | (baud &lt;&lt; <span class="n">4</span>);
+CR1 |= <span class="n">1</span>;   <span class="c">// EN</span></pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">упакованная структура</span> CR1 {
+  EN:   <span class="t">бит</span>[0]
+  BAUD: <span class="t">бит</span>[15:4]   <span class="c">// ширина 12, проверена</span>
+}
+CR1.BAUD = baud   <span class="c">// baud &gt; 0xFFF → ошибка компиляции</span>
+CR1.EN = 1</pre></div>
+      </div>
+    </article>
+
+    <!-- A4 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">A4</span>
+        <h3>Прерывания и размещение: <span class="kw">прерывание</span>, <span class="kw">в секции</span></h3>
+      </div>
+      <p class="why">Прошивке нужны обработчики прерываний (особая ABI, без обычного пролога), <b>naked</b>-функции для boot/переключения контекста и <b>размещение в секциях линкера</b> (таблица векторов в <span class="mono">.isr_vector</span>, код в RAM). Всё это — атрибуты функции: ноль рантайма, только влияние на кодоген/линковку.</p>
+      <div class="badges">
+        <span class="badge zero">0 рантайма</span>
+        <span class="badge gate">тело часто небезопасно</span>
+        <span class="badge inv">атрибут кодогена</span>
+      </div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">C (gcc)</div><pre><span class="k">__attribute__</span>((interrupt))
+<span class="t">void</span> SysTick_Handler(<span class="t">void</span>) { tiks++; }
+
+<span class="k">__attribute__</span>((section(<span class="s">".isr_vector"</span>)))
+<span class="k">const</span> vector_t vectors[] = { … };</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">прерывание ничего</span> SysTick() {
+  тики++
+}
+
+<span class="k">конст</span> векторы: [Вектор] <span class="k">в секции</span> <span class="s">".isr_vector"</span>
+  = [ сброс, nmi, hard_fault, … ]</pre></div>
+      </div>
+    </article>
+
+    <!-- A5 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">A5</span>
+        <h3>Bare-metal режим: <span class="kw">--свободный</span></h3>
+      </div>
+      <p class="why">Сегодня даже <span class="mono">--без-стандартной-библиотеки</span> оставляет рантайм, невозможный на голом железе: jemalloc, бэктрейс (§27), защита стека через SIGSEGV на alt-стеке (§29). Нужен <b>freestanding-профиль</b>: без ОС-зависимостей, кастомная точка входа <span class="mono">_старт</span>, паника → <b>ловушка-хук</b> (<span class="mono">wfi</span>/reset), только статическая память или пулы (§30).</p>
+      <div class="badges">
+        <span class="badge inv">профиль сборки</span>
+        <span class="badge zero">без ОС-рантайма</span>
+        <span class="badge gate">нет кучи по умолчанию</span>
+      </div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас — зашито</div><pre><span class="c">// в каждый бинарник:</span>
+<span class="c">//  · jemalloc (§24)</span>
+<span class="c">//  · backtrace + -rdynamic (§27)</span>
+<span class="c">//  · SIGSEGV-alt-stack guard  (§29)</span>
+<span class="c">// на MCU без ОС — неприменимо</span></pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre>konda --<span class="k">свободный</span> \
+      --целевая-архитектура=thumbv7em \
+      прошивка.конда
+
+<span class="c">// без кучи/бэктрейса/сигналов;</span>
+<span class="c">// точка входа _старт; паника → хук:</span>
+<span class="k">при панике</span> { wfi_навсегда() }</pre></div>
+      </div>
+    </article>
+
+    <!-- A6 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">A6</span>
+        <h3>Именованные интринсики и барьеры</h3>
+      </div>
+      <p class="why"><span class="mono">dsb</span>/<span class="mono">isb</span>/<span class="mono">wfi</span>/<span class="mono">nop</span>, барьеры памяти, доступ к спец-регистрам (CONTROL, PRIMASK). Сейчас — только сырой <span class="mono">асм</span> (§60), непортируемо и без проверок. Обёртки-интринсики: читаемо, портируемо между дугами, всё так же ноль рантайма.</p>
+      <div class="badges">
+        <span class="badge zero">0 рантайма</span>
+        <span class="badge sugar">портируемее, чем асм</span>
+        <span class="badge inv">на базе §60</span>
+      </div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас (§60)</div><pre><span class="k">небезопасно</span> {
+  асм(<span class="s">"dsb sy"</span> : : : <span class="s">"memory"</span>)
+  асм(<span class="s">"wfi"</span>)
+}</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre>барьер_данных(<span class="k">последовательный</span>)
+ждать_прерывания()   <span class="c">// wfi</span>
+<span class="c">// интринсик знает дугу → верный асм</span></pre></div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ═══════════ BLOCK B ═══════════ -->
+  <section>
+    <p class="eyebrow">Блок B · универсальность и псевдокод</p>
+    <h2><span class="num mono">B.</span>Выразительность: код как замысел</h2>
+    <p class="sec-intro">Приближение к псевдокоду — это меньше церемонии на строку смысла. Почти всё ниже — <b>чистый десугар в парсере</b> (как <span class="mono">цикл</span> §46, <span class="mono">для_каждого</span> §56, составное присваивание §45): ноль правок семантики/кодогена, ноль рантайма.</p>
+
+    <!-- B1 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">B1</span>
+        <h3>Вывод типа локали: <span class="kw">пусть</span></h3>
+      </div>
+      <p class="why">Тип локали часто очевиден из инициализатора. <span class="mono">пусть x = …</span> убирает шум, оставаясь <b>полностью статическим</b> (тип выводится в компиляторе, в C эмитится конкретный тип). Явный тип по-прежнему доступен, где помогает читателю.</p>
+      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">меньше шума</span><span class="badge inv">тип статичен</span></div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас</div><pre><span class="t">целое32</span> длина = как&lt;<span class="t">целое32</span>&gt;(strlen(с))
+<span class="t">Точка</span> ц = центр(окно)</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">пусть</span> длина = как&lt;<span class="t">целое32</span>&gt;(strlen(с))
+<span class="k">пусть</span> ц = центр(окно)   <span class="c">// тип выведен</span></pre></div>
+      </div>
+    </article>
+
+    <!-- B2 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">B2</span>
+        <h3>Циклы по диапазону: <span class="kw">для i в 0..n</span></h3>
+      </div>
+      <p class="why">Каноничный счётный цикл — самый частый паттерн. Диапазоны <span class="mono">0..n</span> (полу-открытый), <span class="mono">0..=n</span>, шаг <span class="mono">по 2</span> читаются как псевдокод. Десугар в каноничную форму <span class="mono">для</span> → <b>элизия границ (BCE) работает как раньше</b>, тело векторизуется.</p>
+      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">псевдокод</span><span class="badge inv">десугар в §38-цикл</span></div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас</div><pre><span class="k">для</span> и = 0; и &lt; n; и++ {
+  сумма += данные[и]
+}</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">для</span> и <span class="k">в</span> 0..n {
+  сумма += данные[и]
+}
+<span class="k">для</span> и <span class="k">в</span> 0..n <span class="k">по</span> 2 { … }</pre></div>
+      </div>
+    </article>
+
+    <!-- B3 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">B3</span>
+        <h3>Разворот под условием: <span class="kw">если пусть</span></h3>
+      </div>
+      <p class="why">Null-безопасность есть (§1), но разворот <span class="mono">возможно&lt;T*&gt;</span> и вариантов sum-типа многословен. <span class="mono">если пусть</span> / <span class="mono">пока пусть</span> связывают развёрнутое значение прямо в условии — безопасно и коротко, как в Swift/Rust.</p>
+      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">эргономика null/sum</span><span class="badge inv">на базе §1 · §33</span></div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас</div><pre><span class="k">возможно</span>&lt;<span class="t">Узел</span>*&gt; п = найти(5)
+<span class="k">если</span> п != нуль {
+  <span class="c">// п сужен, читаем п.знач</span>
+}</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">если пусть</span> п = найти(5) {
+  использовать(п.знач)   <span class="c">// п: Узел* тут</span>
+}
+<span class="k">пока пусть</span> стр = очередь.след() { … }</pre></div>
+      </div>
+    </article>
+
+    <!-- B4 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">B4</span>
+        <h3><span class="kw">выбор</span> и <span class="kw">если</span> как выражения</h3>
+      </div>
+      <p class="why">Часто ветвление лишь <i>вычисляет значение</i>. Разрешить <span class="mono">выбор</span>/<span class="mono">если</span> в позиции выражения убирает временную переменную и «прокол» присваиваний в каждой ветке — прямее замысла.</p>
+      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">меньше временных</span><span class="badge inv">анализ дивергенции есть</span></div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас</div><pre><span class="t">целое32</span> знак
+<span class="k">если</span> x &gt; 0 { знак = 1 }
+<span class="k">иначе</span> { знак = -1 }</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">пусть</span> знак = <span class="k">если</span> x &gt; 0 { 1 } <span class="k">иначе</span> { -1 }
+
+<span class="k">пусть</span> имя = <span class="k">выбор</span> код {
+  200 =&gt; <span class="s">"OK"</span>,  404 =&gt; <span class="s">"нет"</span>,  _ =&gt; <span class="s">"?"</span>
+}</pre></div>
+      </div>
+    </article>
+
+    <!-- B5 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">B5</span>
+        <h3>Кортежи, деструктуризация, множественный возврат</h3>
+      </div>
+      <p class="why">В C «несколько результатов» — это out-параметры и ручная распаковка. Кортежи <span class="mono">(a, b)</span> и деструктуризация <span class="mono">пусть (ч, о) = делим(...)</span> выражают это прямо. Реализуемо через анонимную структуру нулевой цены.</p>
+      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">убирает out-параметры</span><span class="badge inv">анон. структура</span></div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">C</div><pre><span class="t">int</span> q, r;
+divmod(a, b, &amp;q, &amp;r);   <span class="c">// out-параметры</span></pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">функция</span> делим(a, b) -&gt; (<span class="t">целое32</span>, <span class="t">целое32</span>) { … }
+<span class="k">пусть</span> (ч, о) = делим(a, b)</pre></div>
+      </div>
+    </article>
+
+    <!-- B6 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">B6</span>
+        <h3>Литералы железа: <span class="kw">0b</span>, разделители, единицы</h3>
+      </div>
+      <p class="why">Регистровая работа тонет в длинных числах. Двоичные <span class="mono">0b1010</span>, разделители <span class="mono">0x4002_0000</span> / <span class="mono">1_000_000</span> и суффиксы-единицы (<span class="mono">16_МГц</span>, <span class="mono">100_мс</span>) резко повышают читаемость и убирают арифметические описки. Чистый лексер, ноль рантайма.</p>
+      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">точность чтения</span><span class="badge inv">только лексер</span></div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас</div><pre>частота = 16000000
+маска = 4026531840   <span class="c">// это что?</span></pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre>частота = 16_000_000        <span class="c">// или 16_МГц</span>
+маска = 0b1111_0000_0000_0000_0000_0000_0000_0000</pre></div>
+      </div>
+    </article>
+
+    <!-- B7 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">B7</span>
+        <h3>Проброс ошибок <span class="kw">?</span> и <span class="kw">отложить</span></h3>
+      </div>
+      <p class="why"><span class="mono">Результат&lt;T,E&gt;</span> есть (§33), но ручная распаковка на каждом шаге многословна. Оператор <span class="mono">?</span> пробрасывает ошибку вверх одним знаком. <span class="mono">отложить {}</span> — ad-hoc очистка на выходе из области (RAII уже покрывает владеющее; defer нужен для «выключить пин», «снять лок»).</p>
+      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">линейный happy-path</span><span class="badge inv">на базе §33 · RAII</span></div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас</div><pre><span class="k">выбор</span> открыть(п) {
+  Успех(ф) =&gt; { … }
+  Провал(е) =&gt; { <span class="k">вернуть</span> Провал(е) }
+}</pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">пусть</span> ф = открыть(п)<span class="k">?</span>       <span class="c">// провал → ранний возврат</span>
+включить_такт(GPIOA)
+<span class="k">отложить</span> { выключить_такт(GPIOA) }</pre></div>
+      </div>
+    </article>
+
+    <!-- B8 -->
+    <article class="spec">
+      <div class="spec-head">
+        <span class="spec-id">B8</span>
+        <h3>Именованные и умолчания аргументов; псевдонимы типов</h3>
+      </div>
+      <p class="why">Вызов <span class="mono">настроить(115200, 8, 1, 0)</span> нечитаем. Именованные аргументы <span class="mono">(скорость: 115200, стоп: 1)</span> самодокументируют. Псевдоним <span class="mono">тип Гц = целое32</span> и newtype дают доменные имена без рантайм-цены. Всё разрешается на этапе компиляции.</p>
+      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">самодокументируемо</span><span class="badge inv">разбор/семантика</span></div>
+      <div class="cmp">
+        <div class="pane now"><div class="cap">Сейчас</div><pre>настроить(115200, 8, 1, 0)
+<span class="c">// порядок и смысл — в голове</span></pre></div>
+        <div class="pane next"><div class="cap">Konda — предложение</div><pre><span class="k">тип</span> Бод = <span class="t">целое32</span>
+настроить(скорость: 115200, биты: 8, стоп: 1)</pre></div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ═══════════ PRIORITY ═══════════ -->
+  <section>
+    <p class="eyebrow">Дорожная карта</p>
+    <h2>Приоритеты: что и в каком порядке</h2>
+    <p class="sec-intro">Ранжировано по тому, <b>что открывает драйверы/прошивки</b> (Tier&nbsp;1 — без этого никак), затем по вкладу в читаемость против стоимости и риска для инвариантов.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Tier</th><th>Фича</th><th>Что открывает</th><th>Инвариант</th><th>Объём</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tier t1">■ 1 · критично</span></td>
+            <td><span class="id">A1</span> <span class="f">изменчивый&lt;T&gt;</span> / MMIO</td>
+            <td>Любой драйвер; доступ к периферии</td>
+            <td>№1 цел; адрес за №2</td>
+            <td>средний</td>
+          </tr>
+          <tr>
+            <td><span class="tier t1">■ 1 · критично</span></td>
+            <td><span class="id">A5</span> <span class="f">--свободный</span> (bare-metal)</td>
+            <td>Прошивка без ОС на MCU вообще</td>
+            <td>профиль сборки</td>
+            <td>средний</td>
+          </tr>
+          <tr>
+            <td><span class="tier t1">■ 1 · критично</span></td>
+            <td><span class="id">B6</span> <span class="f">0b / _ / единицы</span></td>
+            <td>Читаемая регистровая арифметика</td>
+            <td>№1 · только лексер</td>
+            <td>малый</td>
+          </tr>
+          <tr>
+            <td><span class="tier t2">◆ 2 · важно</span></td>
+            <td><span class="id">A2/A3</span> <span class="f">структура по адресу, биты</span></td>
+            <td>SVD-модель периферии, поля регистров</td>
+            <td>№1; ширина статична</td>
+            <td>средний</td>
+          </tr>
+          <tr>
+            <td><span class="tier t2">◆ 2 · важно</span></td>
+            <td><span class="id">A4</span> <span class="f">прерывание / в секции</span></td>
+            <td>ISR, таблица векторов, boot</td>
+            <td>атрибут кодогена</td>
+            <td>средний</td>
+          </tr>
+          <tr>
+            <td><span class="tier t2">◆ 2 · важно</span></td>
+            <td><span class="id">B1/B2</span> <span class="f">пусть, для i в 0..n</span></td>
+            <td>Псевдокод; меньше церемонии</td>
+            <td>№1 · десугар</td>
+            <td>малый</td>
+          </tr>
+          <tr>
+            <td><span class="tier t3">▲ 3 · ценно</span></td>
+            <td><span class="id">A6</span> <span class="f">интринсики/барьеры</span></td>
+            <td>Портируемость поверх §60-асм</td>
+            <td>№1 · на базе §60</td>
+            <td>малый</td>
+          </tr>
+          <tr>
+            <td><span class="tier t3">▲ 3 · ценно</span></td>
+            <td><span class="id">B3/B7</span> <span class="f">если пусть, ?, отложить</span></td>
+            <td>Эргономика null/ошибок/очистки</td>
+            <td>№1 · на базе §1·§33</td>
+            <td>малый–средний</td>
+          </tr>
+          <tr>
+            <td><span class="tier t4">● 4 · сахар</span></td>
+            <td><span class="id">B4/B5/B8</span> <span class="f">выражения, кортежи, имена</span></td>
+            <td>Прямота записи, самодок. вызовы</td>
+            <td>№1 · разбор</td>
+            <td>средний</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════ GUARDRAILS ═══════════ -->
+  <section>
+    <p class="eyebrow">Границы</p>
+    <h2>Чего делать нельзя</h2>
+    <p class="sec-intro">Универсальность не должна размыть то, что делает Konda собой. Три красные линии.</p>
+    <div class="guard">
+      <div class="g">
+        <h4><span class="m">№1</span> Ни грамма рантайма ради удобства</h4>
+        <p>Каждая фича обязана исчезать в релизе (десугар, тип, атрибут). Если фича требует рантайм-механизма — она проектируется как отладочный guard, вырезаемый в релизе, либо отклоняется. Никакого GC, никаких исключений с раскруткой стека.</p>
+      </div>
+      <div class="g">
+        <h4><span class="m">№2</span> Голое железо — только за гейтом или в обёртке</h4>
+        <p>Формирование адреса MMIO, reinterpret, спец-регистры — за <span class="mono">небезопасно&nbsp;{}</span>. Но «наружу» выдаём <b>типобезопасный хендл</b> (A1–A3), чтобы 99% драйверного кода оставалось безопасным. Сохраняем «нет сырого <span class="mono">&amp;</span>»: мутация — через <span class="mono">изменяемый</span>/<span class="mono">вывод</span>.</p>
+      </div>
+      <div class="g">
+        <h4><span class="m">§6</span> Каждую фичу — сразу с максимальным размахом</h4>
+        <p>Урок §55: «v1 с ограничением» рождает второй заход. Диапазоны, кортежи, битовые поля проектируем на весь диапазон паттернов сразу — снимая ограничения по максимуму, не жертвуя инвариантом №1.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ START ═══════════ -->
+  <section style="border-bottom:none">
+    <p class="eyebrow">С чего начать</p>
+    <h2>Минимальный вертикальный срез до «мигающего светодиода»</h2>
+    <p class="sec-intro">Порядок, дающий первую <b>реально прошиваемую</b> программу быстрее всего — классический blinky на голом MCU.</p>
+    <div class="start">
+      <div class="s-n">1</div><div class="s-b"><b>B6</b> — литералы <span class="mono">0x4002_0000</span>, <span class="mono">0b…</span>. Дёшево, нужны везде ниже.</div>
+      <div class="s-n">2</div><div class="s-b"><b>A5</b> <span class="mono">--свободный</span> — снять jemalloc/бэктрейс/сигналы, дать <span class="mono">_старт</span> и <span class="mono">при панике</span>.</div>
+      <div class="s-n">3</div><div class="s-b"><b>A1</b> <span class="mono">изменчивый&lt;T&gt; по адресу</span> — включить такт GPIO, переключить пин.</div>
+      <div class="s-n">4</div><div class="s-b"><b>A4</b> <span class="mono">в секции ".isr_vector"</span> — таблица векторов + <span class="mono">_старт</span>. Blinky прошивается.</div>
+      <div class="s-n">5</div><div class="s-b"><b>A2/A3</b> — регистровые блоки и битовые поля: драйвер становится читаемым.</div>
+    </div>
+  </section>
+
+  <footer>
+    <p class="mono">Доклад · развитие языка Konda в сторону системного программирования. Ссылки <b>§N</b> — на журнал решений <b>docs/РЕШЕНИЯ.md</b>. Все предложенные синтаксисы — эскизы для обсуждения; финальные формы фиксируются через AskUserQuestion и §-запись, как принято в проекте.</p>
+  </footer>
+
+</div>
