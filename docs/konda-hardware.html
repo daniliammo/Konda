@@ -123,6 +123,10 @@
   .badge.gate{color:var(--unsafe); border-color:color-mix(in srgb,var(--unsafe) 40%,transparent); background:color-mix(in srgb,var(--unsafe) 9%,transparent)}
   .badge.inv{color:var(--ink-soft); border-color:var(--rule); background:var(--surface)}
   .badge.sugar{color:var(--ty); border-color:color-mix(in srgb,var(--ty) 40%,transparent); background:color-mix(in srgb,var(--ty) 9%,transparent)}
+  .badge.done{color:#fff; border-color:var(--safe); background:var(--safe); font-weight:600}
+  .spec-id.done{background:var(--safe)}
+  tr.rowdone td{opacity:.62}
+  tr.rowdone .tier{filter:grayscale(.5)}
 
   /* ── code compare ── */
   .cmp{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px}
@@ -212,6 +216,8 @@
       <li><b>§8</b> побитовые <span class="mono">&amp; | ^ &lt;&lt; &gt;&gt; ~</span></li>
       <li><b>§14</b> интероп C: <span class="mono">внешняя</span>, <span class="mono">внешний тип</span></li>
       <li><b>§30</b> кастомный аллокатор (пул во внеш. памяти)</li>
+      <li><b>§66</b> литералы <span class="mono">0x</span>/<span class="mono">0b</span>/<span class="mono">_</span> (B6)</li>
+      <li><b>§67</b> диапазон <span class="mono">для i в 0..n</span> (B2)</li>
       <li>союз <span class="mono">союз</span> + реинтерпрет</li>
       <li>гейт <span class="mono">небезопасно {}</span></li>
       <li>точные целые <span class="mono">целое8…64</span>, <span class="mono">байт</span></li>
@@ -403,11 +409,11 @@ CR1.EN = 1</pre></div>
     <!-- B2 -->
     <article class="spec">
       <div class="spec-head">
-        <span class="spec-id">B2</span>
+        <span class="spec-id done">B2</span>
         <h3>Циклы по диапазону: <span class="kw">для i в 0..n</span></h3>
       </div>
       <p class="why">Каноничный счётный цикл — самый частый паттерн. Диапазоны <span class="mono">0..n</span> (полу-открытый), <span class="mono">0..=n</span>, шаг <span class="mono">по 2</span> читаются как псевдокод. Десугар в каноничную форму <span class="mono">для</span> → <b>элизия границ (BCE) работает как раньше</b>, тело векторизуется.</p>
-      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">псевдокод</span><span class="badge inv">десугар в §38-цикл</span></div>
+      <div class="badges"><span class="badge done">✓ реализовано §67</span><span class="badge zero">0 рантайма</span><span class="badge sugar">псевдокод</span><span class="badge inv">десугар в §38-цикл</span></div>
       <div class="cmp">
         <div class="pane now"><div class="cap">Сейчас</div><pre><span class="k">для</span> и = 0; и &lt; n; и++ {
   сумма += данные[и]
@@ -482,7 +488,8 @@ divmod(a, b, &amp;q, &amp;r);   <span class="c">// out-параметры</span>
         <h3>Литералы железа: <span class="kw">0b</span>, разделители, единицы</h3>
       </div>
       <p class="why">Регистровая работа тонет в длинных числах. Двоичные <span class="mono">0b1010</span>, разделители <span class="mono">0x4002_0000</span> / <span class="mono">1_000_000</span> и суффиксы-единицы (<span class="mono">16_МГц</span>, <span class="mono">100_мс</span>) резко повышают читаемость и убирают арифметические описки. Чистый лексер, ноль рантайма.</p>
-      <div class="badges"><span class="badge zero">0 рантайма</span><span class="badge sugar">точность чтения</span><span class="badge inv">только лексер</span></div>
+      <div class="badges"><span class="badge done">✓ §66: 0x / 0b / _</span><span class="badge zero">0 рантайма</span><span class="badge sugar">точность чтения</span><span class="badge inv">только лексер</span></div>
+      <p class="why" style="margin-top:-6px"><b>Реализовано (§66):</b> <span class="mono">0x</span>/<span class="mono">0b</span> и разделители <span class="mono">_</span> (кодоген вырезает <span class="mono">_</span>, префиксы — как есть). <b>Осталось:</b> суффиксы-единицы (<span class="mono">16_МГц</span> → <span class="mono">16000000</span>) — низкий приоритет, чистый сахар лексера.</p>
       <div class="cmp">
         <div class="pane now"><div class="cap">Сейчас</div><pre>частота = 16000000
 маска = 4026531840   <span class="c">// это что?</span></pre></div>
@@ -552,12 +559,12 @@ divmod(a, b, &amp;q, &amp;r);   <span class="c">// out-параметры</span>
             <td>профиль сборки</td>
             <td>средний</td>
           </tr>
-          <tr>
+          <tr class="rowdone">
             <td><span class="tier t1">■ 1 · критично</span></td>
-            <td><span class="id">B6</span> <span class="f">0b / _ / единицы</span></td>
+            <td><span class="id">B6</span> <span class="f">0b / _</span> <span class="badge done">✓ §66</span> <span class="f">· единицы</span></td>
             <td>Читаемая регистровая арифметика</td>
             <td>№1 · только лексер</td>
-            <td>малый</td>
+            <td>малый · <b>ост. единицы</b></td>
           </tr>
           <tr>
             <td><span class="tier t2">◆ 2 · важно</span></td>
@@ -575,10 +582,10 @@ divmod(a, b, &amp;q, &amp;r);   <span class="c">// out-параметры</span>
           </tr>
           <tr>
             <td><span class="tier t2">◆ 2 · важно</span></td>
-            <td><span class="id">B1/B2</span> <span class="f">пусть, для i в 0..n</span></td>
+            <td><span class="id">B1</span> <span class="f">пусть</span> · <span class="id">B2</span> <span class="f">для i в 0..n</span> <span class="badge done">✓ §67</span></td>
             <td>Псевдокод; меньше церемонии</td>
             <td>№1 · десугар</td>
-            <td>малый</td>
+            <td>малый · <b>ост. B1</b></td>
           </tr>
           <tr>
             <td><span class="tier t3">▲ 3 · ценно</span></td>
@@ -633,7 +640,7 @@ divmod(a, b, &amp;q, &amp;r);   <span class="c">// out-параметры</span>
     <h2>Минимальный вертикальный срез до «мигающего светодиода»</h2>
     <p class="sec-intro">Порядок, дающий первую <b>реально прошиваемую</b> программу быстрее всего — классический blinky на голом MCU.</p>
     <div class="start">
-      <div class="s-n">1</div><div class="s-b"><b>B6</b> — литералы <span class="mono">0x4002_0000</span>, <span class="mono">0b…</span>. Дёшево, нужны везде ниже.</div>
+      <div class="s-n" style="background:var(--safe)">✓</div><div class="s-b"><b>B6</b> — литералы <span class="mono">0x4002_0000</span>, <span class="mono">0b…</span> <b>— сделано (§66)</b>. Нужны везде ниже.</div>
       <div class="s-n">2</div><div class="s-b"><b>A5</b> <span class="mono">--свободный</span> — снять jemalloc/бэктрейс/сигналы, дать <span class="mono">_старт</span> и <span class="mono">при панике</span>.</div>
       <div class="s-n">3</div><div class="s-b"><b>A1</b> <span class="mono">изменчивый&lt;T&gt; по адресу</span> — включить такт GPIO, переключить пин.</div>
       <div class="s-n">4</div><div class="s-b"><b>A4</b> <span class="mono">в секции ".isr_vector"</span> — таблица векторов + <span class="mono">_старт</span>. Blinky прошивается.</div>
