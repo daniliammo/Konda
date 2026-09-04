@@ -15,7 +15,7 @@ assert_eq() { # ожидание, факт, метка
 [ -x "$BIN" ] || fail "нет транспилятора: $BIN (собери 'make' в корне)"
 
 echo "== сборка библиотеки (--библиотека → .so + .и) =="
-"$BIN" --библиотека "$HERE/toml.конда" >/dev/null 2>&1 \
+"$BIN" --библиотека --вывод="$OUT" "$HERE/toml.конда" >/dev/null 2>&1 \
     || fail "toml.конда не собралась как библиотека"
 [ -f "$OUT/toml.so" ] || fail "нет вывод/toml.so"
 [ -f "$OUT/toml.и" ]  || fail "нет вывод/toml.и"
@@ -23,14 +23,14 @@ grep -q "^Ф томл_значение" "$OUT/toml.и" || fail ".и не экс�
 echo "  ок: .so + .и собраны, интерфейс экспортирован"
 
 echo "== самотест (query-API: секции, строки, флаги, массивы) =="
-"$BIN" "$HERE/toml.конда" "$HERE/тест.конда" >/dev/null 2>&1 \
+"$BIN" --вывод="$OUT" "$HERE/toml.конда" "$HERE/тест.конда" >/dev/null 2>&1 \
     || fail "самотест не собрался"
 OUTP="$("$OUT/toml.elf")"
 assert_eq "имя=[конда_init]"        "$(echo "$OUTP" | sed -n 1p)"  "строка из [проект]"
 assert_eq "версия=[0.1.0]"          "$(echo "$OUTP" | sed -n 2p)"  "строка версии"
 assert_eq "режим=[релиз]"           "$(echo "$OUTP" | sed -n 3p)"  "строка из [сборка]"
 assert_eq "статический=да"          "$(echo "$OUTP" | sed -n 4p)"  "флаг true→да"
-assert_eq "стдлиб=да"               "$(echo "$OUTP" | sed -n 5p)"  "флаг да"
+assert_eq "стдлиб=нет"              "$(echo "$OUTP" | sed -n 5p)"  "флаг false→нет"
 assert_eq "отладка(умолч)=нет"      "$(echo "$OUTP" | sed -n 6p)"  "флаг по умолчанию→нет"
 assert_eq "исходников=2"            "$(echo "$OUTP" | sed -n 7p)"  "длина массива"
 assert_eq "ист0=[основа.конда]"     "$(echo "$OUTP" | sed -n 8p)"  "элемент массива 0"
@@ -39,7 +39,7 @@ assert_eq "нетключа=<нет>"          "$(echo "$OUTP" | sed -n 10p)" "�
 echo "  ок: все запросы вернули верные значения"
 
 echo "== ASan+UBSan (память сгенерированного C чиста) =="
-"$BIN" --только-си "$HERE/toml.конда" "$HERE/тест.конда" >/dev/null 2>&1
+"$BIN" --только-си --вывод="$OUT" "$HERE/toml.конда" "$HERE/тест.конда" >/dev/null 2>&1
 cc -std=gnu23 -g -O0 -fsanitize=address,undefined -I "$HERE" "$OUT/toml.c" -o "$OUT/toml_asan" 2>/dev/null \
     || fail "ASan-сборка не удалась"
 "$OUT/toml_asan" >/dev/null 2>"$OUT/toml_asan.log" \
