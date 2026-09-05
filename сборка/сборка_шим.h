@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #ifndef KONDA_SREZ_DEFINED
 #define KONDA_SREZ_DEFINED
@@ -101,4 +103,39 @@ static inline void сборка_писать_кэш(const char *путь, int64_
 /* Сравнение C-строк (для разбора флагов argv). */
 static inline int32_t сборка_равно_си(const char *левый, const char *правый) {
     return strcmp(левый, правый) == 0 ? 1 : 0;
+}
+
+/* Собрать зависимость: запустить ЭТОТ ЖЕ фронтенд в каталоге зависимости (у неё
+   свой Konda.toml и свой .konda-сборка.кэш → пер-проектный инкремент). Возврат:
+   код выхода дочерней сборки или -1. */
+static inline int32_t сборка_собрать_зависимость(const char *каталог) {
+    char сам[4096];
+    ssize_t длина = readlink("/proc/self/exe", сам, sizeof сам - 1);
+    if (длина < 0) return -1;
+    сам[длина] = '\0';
+    pid_t потомок = fork();
+    if (потомок < 0) return -1;
+    if (потомок == 0) {
+        if (chdir(каталог) != 0) _exit(126);
+        execl(сам, сам, (char *)NULL);
+        _exit(127);
+    }
+    int статус;
+    if (waitpid(потомок, &статус, 0) < 0) return -1;
+    return WIFEXITED(статус) ? (int32_t)WEXITSTATUS(статус) : -1;
+}
+
+/* Переименовать файл (для поля «выход»). Пути — срезы (NUL-терминируем внутри).
+   Возврат: 0 или -1. */
+static inline int32_t сборка_переименовать_срез(Срез из, Срез в) {
+    char *путь_из = (char *)malloc(из.длина + 1);
+    char *путь_в = (char *)malloc(в.длина + 1);
+    int32_t итог = -1;
+    if (путь_из && путь_в) {
+        memcpy(путь_из, из.данные, из.длина); путь_из[из.длина] = '\0';
+        memcpy(путь_в, в.данные, в.длина);   путь_в[в.длина] = '\0';
+        итог = rename(путь_из, путь_в) == 0 ? 0 : -1;
+    }
+    free(путь_из); free(путь_в);
+    return итог;
 }
