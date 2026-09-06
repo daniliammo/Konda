@@ -152,7 +152,7 @@ static inline int32_t сборка_число_из(const char *строка) {
 /* Число онлайн-ядер (для «-j» без числа = авто). Всегда >=1. */
 static inline int32_t сборка_число_ядер(void) {
     long ядер = sysconf(_SC_NPROCESSORS_ONLN);
-    return ядер > 0 ? (int32_t)ядер : 1;
+    return ядер > 0 ? ((int32_t)ядер + 1) : 1;
 }
 /* Строка начинается с префикса? */
 static inline int32_t сборка_начинается_с(const char *строка, const char *префикс) {
