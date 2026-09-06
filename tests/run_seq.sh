@@ -15,6 +15,9 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 BIN="$ROOT/Собранное/ТранспиляторКонда"
 
+# Корпус — на переносимом baseline ISA (в1): дефолт «в3» требует AVX2/BMI2 (см. run.sh).
+export KONDA_MARCH="${KONDA_MARCH:-в1}"
+
 . "$ROOT/tests/common.sh"
 check_compiler
 

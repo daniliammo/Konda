@@ -75,7 +75,7 @@ int скомпилировать_си(const char *путь_си, const char *п�
                        const char **доп_so, size_t число_so, int потоки,
                        const char *компилятор, int jemalloc, int символы,
                        int статический, int использует_embed,
-                       int предупреждения_как_ошибки)
+                       int предупреждения_как_ошибки, const char *march_флаг)
 {
     if (!компилятор || !компилятор[0]) компилятор = "cc";
     // jemalloc — только для исполняемых файлов: у .so аллокатор выбирает
@@ -118,7 +118,8 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // +1 «-pthread», +1 jemalloc, +3 символы (-rdynamic/-funwind-tables/-g),
     // +5 hardening (-Wl,-z,relro/now/noexecstack + stack-clash/protector-strong).
     size_t макс_арг = 25 + 2 * число_so + 5 + 1 /* --embed-dir */
-                      + 6 /* -Werror + пять -Wno-… (защита clean-билда) */;
+                      + 6 /* -Werror + пять -Wno-… (защита clean-билда) */
+                      + 1 /* -march=<...> (целевой ISA-уровень) */;
     const char **argv = calloc(макс_арг, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); return 1; }
@@ -161,8 +162,8 @@ int скомпилировать_си(const char *путь_си, const char *п�
     //     AppleClang номера версий свои и поддержка исторически неровная —
     //     на Darwin не ставим, чтобы не ломать сборку;
     //   • -fstack-protector-strong — переносим (gcc/clang на всех POSIX).
-    // (-fPIE/ASLR не дублируем — это дефолт линковки; -march=native НЕ ставим —
-    //  ломал бы переносимость и кросс.)
+    // (-fPIE/ASLR не дублируем — это дефолт линковки. -march задаётся отдельно
+    //  ниже из флага --march: дефолт x86-64-v3, переносимость/native — по выбору.)
     // В статическом режиме GOT нет (не PIC) → relro/now бесполезны; noexecstack
     // сохраняем (стек всё ещё NX).
 #if !defined(__APPLE__)
@@ -201,6 +202,12 @@ int скомпилировать_си(const char *путь_си, const char *п�
         argv[n++] = "-O0";
         argv[n++] = "-g";
     }
+    // Целевой ISA-уровень: «-march=<...>» (сформирован в основа.c → разрешить_march).
+    // По умолчанию — x86-64-v3 (авто-векторизация AVX2/BMI2 и т.п.); переносимость и
+    // выбор native/уровней — флагом --march (там же обязательное предупреждение о
+    // старых CPU). Ставим и в релизе, и в отладке — выбор ISA от оптимизации не
+    // зависит (в -O0 безвреден, ABI консистентна). Пусто → -march не задаём.
+    if (march_флаг && march_флаг[0]) argv[n++] = march_флаг;
     // Читаемость бэктрейса (конда_прервать вшит в рантайм всегда). Эти флаги
     // влияют только на РАЗМЕР бинарника, не на скорость, поэтому включены по
     // умолчанию и снимаются флагом «--без-символов»:

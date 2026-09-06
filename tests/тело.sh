@@ -13884,6 +13884,49 @@ grep -q "Неизвестный аллокатор" "$TMP/ал.log" || {
 "$BIN" --целевая-архитектура=aarch64-linux-gnu флаги_сборки.конда >"$TMP/кросс.log" 2>&1 || true
 grep -q "aarch64-linux-gnu-gcc -std=gnu23" "$TMP/кросс.log" || {
     cat "$TMP/кросс.log" >&2; fail "--целевая-архитектура должна звать <триплет>-gcc"; }
+
+# ─── --march: целевой ISA-уровень (native/в1..в4/строка) + предупреждение ─────
+# (корпус экспортирует KONDA_MARCH=в1; для проверки дефолта локально его гасим.)
+# Явные уровни → нужная строка «-march=…» в команде компиляции.
+"$BIN" --march=нативный флаги_сборки.конда >"$TMP/м_нат.log" 2>&1
+grep -q -- "-march=native" "$TMP/м_нат.log" || {
+    cat "$TMP/м_нат.log" >&2; fail "--march=нативный должен давать -march=native"; }
+"$BIN" --march=в4 флаги_сборки.конда >"$TMP/м_в4.log" 2>&1
+grep -q -- "-march=x86-64-v4" "$TMP/м_в4.log" || {
+    cat "$TMP/м_в4.log" >&2; fail "--march=в4 должен давать -march=x86-64-v4"; }
+"$BIN" --march=в1 флаги_сборки.конда >"$TMP/м_в1.log" 2>&1
+grep -q -- "-march=x86-64 " "$TMP/м_в1.log" || {
+    cat "$TMP/м_в1.log" >&2; fail "--march=в1 должен давать базовый -march=x86-64"; }
+# Произвольная строка пробрасывается в cc как есть (escape-hatch).
+"$BIN" --march=skylake флаги_сборки.конда >"$TMP/м_ск.log" 2>&1
+grep -q -- "-march=skylake" "$TMP/м_ск.log" || {
+    cat "$TMP/м_ск.log" >&2; fail "--march=<строка> должен пробрасываться как есть"; }
+# Явный --march ГАСИТ обязательное предупреждение о дефолтном в3.
+if grep -q "ISA-уровень «в3»" "$TMP/м_в4.log"; then
+    cat "$TMP/м_в4.log" >&2; fail "явный --march не должен печатать предупреждение о дефолте"; fi
+
+# Дефолт (ни флага, ни KONDA_MARCH) → x86-64-v3 + ОБЯЗАТЕЛЬНОЕ предупреждение.
+KONDA_MARCH= "$BIN" флаги_сборки.конда >"$TMP/м_деф.log" 2>&1
+grep -q -- "-march=x86-64-v3" "$TMP/м_деф.log" || {
+    cat "$TMP/м_деф.log" >&2; fail "по умолчанию ISA-уровень должен быть x86-64-v3"; }
+grep -q "ISA-уровень «в3»" "$TMP/м_деф.log" || {
+    cat "$TMP/м_деф.log" >&2; fail "дефолтный в3 должен печатать предупреждение о старых CPU"; }
+# KONDA_NO_ISA_WARN гасит предупреждение, оставляя в3.
+KONDA_MARCH= KONDA_NO_ISA_WARN=1 "$BIN" флаги_сборки.конда >"$TMP/м_тихо.log" 2>&1
+grep -q -- "-march=x86-64-v3" "$TMP/м_тихо.log" || {
+    cat "$TMP/м_тихо.log" >&2; fail "KONDA_NO_ISA_WARN должен сохранять дефолтный в3"; }
+if grep -q "ISA-уровень «в3»" "$TMP/м_тихо.log"; then
+    cat "$TMP/м_тихо.log" >&2; fail "KONDA_NO_ISA_WARN должен гасить предупреждение"; fi
+# KONDA_MARCH как глобальный дефолт (без флага) → берётся как явный (без предупр.).
+KONDA_MARCH=в2 "$BIN" флаги_сборки.конда >"$TMP/м_env.log" 2>&1
+grep -q -- "-march=x86-64-v2" "$TMP/м_env.log" || {
+    cat "$TMP/м_env.log" >&2; fail "KONDA_MARCH=в2 должен давать -march=x86-64-v2"; }
+if grep -q "ISA-уровень «в3»" "$TMP/м_env.log"; then
+    cat "$TMP/м_env.log" >&2; fail "KONDA_MARCH — явный уровень, предупреждения быть не должно"; fi
+# Кросс ARM64 + --march=в1 → базовый armv8-a (эхо команды; тулчейн может отсутствовать).
+"$BIN" --целевая-архитектура=aarch64-linux-gnu --march=в1 флаги_сборки.конда >"$TMP/м_arm.log" 2>&1 || true
+grep -q -- "-march=armv8-a" "$TMP/м_arm.log" || {
+    cat "$TMP/м_arm.log" >&2; fail "ARM64 --march=в1 должен давать -march=armv8-a"; }
 if grep -q -- "libjemalloc" "$TMP/кросс.log"; then
     cat "$TMP/кросс.log" >&2; fail "на кроссе без явного --аллокатор jemalloc не линкуется (авто-libc)"
 fi
