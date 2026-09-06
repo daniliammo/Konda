@@ -66,3 +66,5 @@ dkms.conf
 
 # Кэш актуальности konda build
 .konda-сборка.кэш
+# Межпроцессная блокировка каталога сборки konda build
+.konda-сборка.lock
