@@ -70,6 +70,30 @@ static void абс_каталог_файла(const char *путь, char *out, si
     else snprintf(out, cap, "%s", копия[0] ? копия : ".");
 }
 
+// Запустить компилятор с готовым argv (печатает команду, форкает, ждёт).
+// Возвращает 0 — успех, 1 — ошибка. execvp — без промежуточного shell (пути
+// идут отдельными элементами argv, инъекция через имя файла невозможна).
+static int запустить_компилятор(const char *компилятор, const char **argv, int n)
+{
+    for (int i = 0; i < n; ++i) printf(i == 0 ? "%s" : " %s", argv[i]);
+    printf("\n");
+    pid_t pid = fork();
+    if (pid < 0) { perror("fork"); return 1; }
+    if (pid == 0) {
+        execvp(компилятор, (char *const *)argv);
+        perror(компилятор);
+        _exit(127);
+    }
+    int статус = 0;
+    if (waitpid(pid, &статус, 0) < 0) { perror("waitpid"); return 1; }
+    if (!WIFEXITED(статус) || WEXITSTATUS(статус) != 0) {
+        fprintf(stderr, "Ошибка компиляции (код %d)\n",
+                WIFEXITED(статус) ? WEXITSTATUS(статус) : -1);
+        return 1;
+    }
+    return 0;
+}
+
 int скомпилировать_си(const char *путь_си, const char *путь_вывода, int релиз,
                        int библиотека, const char *вкл_каталог,
                        const char **доп_so, size_t число_so, int потоки,
@@ -328,5 +352,204 @@ int скомпилировать_си(const char *путь_си, const char *п�
     }
     free(argv);
     free(rpaths);
+    return рез;
+}
+
+// Добавляет в argv[*n] «общие» флаги, одинаковые на этапе компиляции TU и на
+// этапе LTO-линковки (LTO требует согласованных флагов оптимизации/ISA). Это те
+// же решения, что в скомпилировать_си, но без ЛИНКОВОЧНЫХ (-shared/-o/-Wl,*/
+// rpath/.so/jemalloc/-rdynamic) и без tail (-c/источник). embed_dir_буф — внешний
+// буфер под «--embed-dir=…» (живёт до execvp). Возвращает новое n.
+static int добавить_общие_флаги(const char **argv, int n, int релиз,
+                                int предупреждения_как_ошибки, const char *march_флаг,
+                                int символы, const char *вкл_каталог,
+                                int использует_embed, int библиотека, int потоки,
+                                char *embed_dir_буф, size_t embed_cap)
+{
+    argv[n++] = "-std=gnu23";
+    argv[n++] = "-Wall";
+    argv[n++] = "-Wextra";
+    if (предупреждения_как_ошибки) {
+        argv[n++] = "-Werror";
+        argv[n++] = "-Wno-sign-compare";
+        argv[n++] = "-Wno-unused-parameter";
+        argv[n++] = "-Wno-unused-variable";
+        argv[n++] = "-Wno-unused-function";
+        argv[n++] = "-Wno-unused-but-set-variable";
+    }
+#if !defined(__APPLE__)
+    argv[n++] = "-fstack-clash-protection";
+#endif
+    argv[n++] = "-fstack-protector-strong";
+    if (релиз) {
+        argv[n++] = "-O2";
+        argv[n++] = "-fwrapv";
+        argv[n++] = "-fno-math-errno";
+        argv[n++] = "-fno-plt";
+    } else {
+        argv[n++] = "-O0";
+        argv[n++] = "-g";
+    }
+    if (march_флаг && march_флаг[0]) argv[n++] = march_флаг;
+    if (символы) {
+        argv[n++] = "-funwind-tables";
+        if (релиз) argv[n++] = "-g";
+    }
+    if (библиотека) argv[n++] = "-fPIC";
+    if (потоки) argv[n++] = "-pthread";
+    argv[n++] = "-flto";
+    if (вкл_каталог && вкл_каталог[0]) {
+        argv[n++] = "-I";
+        argv[n++] = вкл_каталог;
+        if (использует_embed) {
+            snprintf(embed_dir_буф, embed_cap, "--embed-dir=%s", вкл_каталог);
+            argv[n++] = embed_dir_буф;
+        }
+    }
+    return n;
+}
+
+int скомпилировать_раздельно(const char (*пути_c)[512], const int *изменился,
+                       size_t число_tu, const char *путь_вывода, int релиз,
+                       int библиотека, const char *вкл_каталог,
+                       const char **доп_so, size_t число_so, int потоки,
+                       const char *компилятор, int jemalloc, int символы,
+                       int статический, int использует_embed,
+                       int предупреждения_как_ошибки, const char *march_флаг)
+{
+    if (!компилятор || !компилятор[0]) компилятор = "cc";
+    int линк_jemalloc = jemalloc && !библиотека;
+    if (статический && библиотека) {
+        fprintf(stderr, "Ошибка: --статический несовместим с --библиотека (.so).\n");
+        return 1;
+    }
+    if (статический && число_so > 0) {
+        fprintf(stderr, "Ошибка: статическая линковка Konda-библиотек (.so) не поддержана.\n");
+        return 1;
+    }
+#if defined(__APPLE__)
+    if (статический) {
+        fprintf(stderr, "Ошибка: --статический не поддержан на macOS (нет статической libSystem).\n");
+        return 1;
+    }
+#endif
+    const char *суффикс = библиотека ? КОНДА_СУФФИКС_БИБЛ : "elf";
+    char путь_с_суффиксом[600];
+    snprintf(путь_с_суффиксом, sizeof(путь_с_суффиксом), "%s.%s", путь_вывода, суффикс);
+
+    // Пути .o (из .c: «…​.c» → «…​.o»). Держим до линковки.
+    char (*пути_o)[520] = calloc(число_tu, sizeof(*пути_o));
+    if (!пути_o) { perror("calloc"); return 1; }
+    for (size_t i = 0; i < число_tu; ++i) {
+        size_t дл = strlen(пути_c[i]);
+        snprintf(пути_o[i], sizeof(пути_o[i]), "%.*s.o",
+                 (int)(дл >= 2 ? дл - 2 : дл), пути_c[i]);
+    }
+
+    // ── компиляция TU в .o (только изменившиеся или без готового .o) ─────────
+    char embed_dir[PATH_MAX + 16];
+    int рез = 0;
+    int собрано = 0, пропущено = 0;
+    for (size_t i = 0; i < число_tu && рез == 0; ++i) {
+        struct stat s;
+        int есть_o = stat(пути_o[i], &s) == 0;
+        if (!изменился[i] && есть_o) {
+            printf("Актуально: %s\n", пути_o[i]);
+            пропущено++;
+            continue;
+        }
+        const char *argv[40];
+        int n = 0;
+        argv[n++] = компилятор;
+        n = добавить_общие_флаги(argv, n, релиз, предупреждения_как_ошибки, march_флаг,
+                                 символы, вкл_каталог, использует_embed, библиотека,
+                                 потоки, embed_dir, sizeof(embed_dir));
+        argv[n++] = "-c";
+        argv[n++] = "-o";
+        argv[n++] = пути_o[i];
+        argv[n++] = пути_c[i];
+        argv[n] = nullptr;
+        if (запустить_компилятор(компилятор, argv, n) != 0) рез = 1;
+        else собрано++;
+    }
+    if (рез != 0) { free(пути_o); return 1; }
+    printf("TU: собрано %d, пропущено %d (актуальные)\n", собрано, пропущено);
+
+    // Ничего не пересобрано и итоговый бинарник на месте → линковка не нужна
+    // (инкремент: правки нет — выход уже актуален).
+    {
+        struct stat s;
+        if (собрано == 0 && stat(путь_с_суффиксом, &s) == 0) {
+            printf("Актуально: %s (линковка пропущена)\n", путь_с_суффиксом);
+            free(пути_o);
+            return 0;
+        }
+    }
+
+    // ── LTO-линковка всех .o ────────────────────────────────────────────────
+    size_t макс = 30 + число_tu + 2 * число_so + 2;
+    const char **argv = calloc(макс, sizeof(*argv));
+    char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
+    if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); free(пути_o); return 1; }
+    char embed_dir2[PATH_MAX + 16];
+    int n = 0;
+    argv[n++] = компилятор;
+    if (статический) argv[n++] = "-static";
+#if !defined(__APPLE__)
+    if (!статический) {
+        argv[n++] = "-Wl,-z,relro";
+        argv[n++] = "-Wl,-z,now";
+    }
+    argv[n++] = "-Wl,-z,noexecstack";
+#endif
+    // Общие (оптимизация/ISA/hardening/pthread/flto) — на линковке те же (LTO).
+    n = добавить_общие_флаги(argv, n, релиз, предупреждения_как_ошибки, march_флаг,
+                             символы, вкл_каталог, использует_embed, библиотека,
+                             потоки, embed_dir2, sizeof(embed_dir2));
+    // Экспорт символов для читаемого бэктрейса — только линковка (см. скомпилировать_си).
+    if (символы) {
+#if !defined(__APPLE__)
+        if (!статический) argv[n++] = "-rdynamic";
+#endif
+    }
+    if (библиотека) {
+#if defined(__APPLE__)
+        argv[n++] = "-dynamiclib";
+        char *inst = calloc(1, PATH_MAX + 64);
+        if (inst) {
+            const char *базовое = strrchr(путь_с_суффиксом, '/');
+            базовое = базовое ? базовое + 1 : путь_с_суффиксом;
+            snprintf(inst, PATH_MAX + 64, "-Wl,-install_name,@rpath/%s", базовое);
+            argv[n++] = inst;   // утекает вместе с короткоживущим процессом
+        }
+#else
+        argv[n++] = "-shared";
+#endif
+    }
+    argv[n++] = "-o";
+    argv[n++] = путь_с_суффиксом;
+    for (size_t i = 0; i < число_tu; ++i) argv[n++] = пути_o[i];
+    for (size_t i = 0; i < число_so; ++i) {
+        char каталог[PATH_MAX];
+        абс_каталог_файла(доп_so[i], каталог, sizeof(каталог));
+        snprintf(rpaths[i], sizeof(rpaths[i]), "-Wl,-rpath,%s", каталог);
+        argv[n++] = доп_so[i];
+        argv[n++] = rpaths[i];
+    }
+    if (линк_jemalloc) {
+#if defined(__linux__)
+        argv[n++] = статический ? "-ljemalloc" : "-l:libjemalloc.so.2";
+#else
+        argv[n++] = "-ljemalloc";
+#endif
+    }
+    argv[n] = nullptr;
+
+    рез = запустить_компилятор(компилятор, argv, n);
+    if (рез == 0) printf("Собрано: %s\n", путь_с_суффиксом);
+
+    free(argv);
+    free(rpaths);
+    free(пути_o);
     return рез;
 }
