@@ -9,9 +9,8 @@
 #include "макросы.h"
 #include "libkonda_ide.h"
 
-#define ВЕРСИЯ_KONDA "0.1.0"
-
-const char *konda_версия(void) { return ВЕРСИЯ_KONDA; }
+// ВЕРСИЯ_ТРАНСПИЛЯТОРА — из транспилятор.h (единая точка правды версий, §89).
+const char *konda_версия(void) { return ВЕРСИЯ_ТРАНСПИЛЯТОРА; }
 
 // ─── отображение типа Konda в строку (для сигнатур/hover) ────────────────────
 
