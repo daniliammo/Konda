@@ -77,7 +77,7 @@ cat > "$INCDIR/м.конда" <<'KONDA'
     вернуть 0
 }
 KONDA
-printf '[проект]\nисходники = ["м.конда"]\n' > "$INCDIR/Konda.toml"
+printf '[проект]\n' > "$INCDIR/Konda.toml"
 ( cd "$INCDIR" && KONDA_TRANSPILER="$BIN" "$FRONT" >/dev/null 2>&1 ) || fail "вкл: первая сборка упала"
 printf '#pragma once\nstatic inline int дв(int x){return x*3;}\n' > "$INCDIR/ш.h"
 ( cd "$INCDIR" && KONDA_TRANSPILER="$BIN" "$FRONT" >"$HERE/вывод/e2e6.log" 2>&1 ) || fail "вкл: пересборка упала"
@@ -88,7 +88,7 @@ echo "== #1: смена ИСТОЧНИКА зависимости → перес
 DEPROOT="$HERE/вывод/деп-проект"
 rm -rf "$DEPROOT"; mkdir -p "$DEPROOT/либа" "$DEPROOT/главный"
 printf 'целое32 ф(целое32 x) { вернуть x }\n' > "$DEPROOT/либа/л.конда"
-printf '[проект]\nтип = "библиотека"\nисходники = ["л.конда"]\n' > "$DEPROOT/либа/Konda.toml"
+printf '[проект]\nтип = "библиотека"\n' > "$DEPROOT/либа/Konda.toml"
 cat > "$DEPROOT/главный/г.конда" <<'KONDA'
 #содержит <stdio.h>
 целое32 точка_входа(срез<символ*> аргументы)
@@ -97,7 +97,7 @@ cat > "$DEPROOT/главный/г.конда" <<'KONDA'
     вернуть 0
 }
 KONDA
-printf '[проект]\nисходники = ["г.конда"]\n[сборка]\nзависимости = ["../либа"]\n' > "$DEPROOT/главный/Konda.toml"
+printf '[проект]\n[сборка]\nзависимости = ["../либа"]\n' > "$DEPROOT/главный/Konda.toml"
 ( cd "$DEPROOT/главный" && KONDA_TRANSPILER="$BIN" "$FRONT" >/dev/null 2>&1 ) || fail "деп: первая сборка упала"
 ( cd "$DEPROOT/главный" && KONDA_TRANSPILER="$BIN" "$FRONT" >"$HERE/вывод/e2e7.log" 2>&1 ) || fail "деп: повтор упал"
 grep -q "актуально" "$HERE/вывод/e2e7.log" || { cat "$HERE/вывод/e2e7.log" >&2; fail "без изменений главный должен быть актуален"; }
@@ -119,7 +119,6 @@ cat > "$SPACEDIR/мой модуль.конда" <<'KONDA'
 KONDA
 cat > "$SPACEDIR/Konda.toml" <<'TOML'
 [проект]
-исходники = ["мой модуль.конда"]
 выход     = "прог"
 TOML
 ( cd "$SPACEDIR" && KONDA_TRANSPILER="$BIN" "$FRONT" >"$HERE/вывод/проб.log" 2>&1 ) \
@@ -144,7 +143,6 @@ cat > "$LIBDIR/Konda.toml" <<'TOML'
 [проект]
 тип       = "библиотека"
 имя       = "мойлиб"
-исходники = ["а.конда", "б.конда"]
 [сборка]
 режим = "релиз"
 TOML
@@ -170,7 +168,7 @@ PARROOT="$HERE/вывод/пар-деп"
 rm -rf "$PARROOT"; mkdir -p "$PARROOT/д1" "$PARROOT/д2" "$PARROOT/д3" "$PARROOT/корень"
 for i in 1 2 3; do
     printf 'целое32 ф%s(целое32 x) { вернуть x }\n' "$i" > "$PARROOT/д$i/л.конда"
-    printf '[проект]\nтип = "библиотека"\nисходники = ["л.конда"]\n' > "$PARROOT/д$i/Konda.toml"
+    printf '[проект]\nтип = "библиотека"\n' > "$PARROOT/д$i/Konda.toml"
 done
 cat > "$PARROOT/корень/к.конда" <<'KONDA'
 #содержит <stdio.h>
@@ -180,7 +178,7 @@ cat > "$PARROOT/корень/к.конда" <<'KONDA'
     вернуть 0
 }
 KONDA
-printf '[проект]\nисходники = ["к.конда"]\n[сборка]\nзависимости = ["../д1", "../д2", "../д3"]\n' > "$PARROOT/корень/Konda.toml"
+printf '[проект]\n[сборка]\nзависимости = ["../д1", "../д2", "../д3"]\n' > "$PARROOT/корень/Konda.toml"
 ( cd "$PARROOT/корень" && KONDA_TRANSPILER="$BIN" "$FRONT" -j4 >"$HERE/вывод/парj.log" 2>&1 ) \
     || { cat "$HERE/вывод/парj.log" >&2; fail "-j: сборка с параллельными зависимостями упала"; }
 grep -q "готово" "$HERE/вывод/парj.log" || { cat "$HERE/вывод/парj.log" >&2; fail "-j: нет 'готово'"; }
@@ -195,10 +193,10 @@ echo "== -j: ромб зависимостей (общая под-зависим
 ROMB="$HERE/вывод/пар-ромб"
 rm -rf "$ROMB"; mkdir -p "$ROMB/общая" "$ROMB/а" "$ROMB/б" "$ROMB/гл"
 printf 'целое32 общ(целое32 x) { вернуть x }\n' > "$ROMB/общая/о.конда"
-printf '[проект]\nтип = "библиотека"\nисходники = ["о.конда"]\n' > "$ROMB/общая/Konda.toml"
+printf '[проект]\nтип = "библиотека"\n' > "$ROMB/общая/Konda.toml"
 for d in а б; do
     printf 'целое32 ф(целое32 x) { вернуть x }\n' > "$ROMB/$d/л.конда"
-    printf '[проект]\nтип = "библиотека"\nисходники = ["л.конда"]\n[сборка]\nзависимости = ["../общая"]\n' > "$ROMB/$d/Konda.toml"
+    printf '[проект]\nтип = "библиотека"\n[сборка]\nзависимости = ["../общая"]\n' > "$ROMB/$d/Konda.toml"
 done
 cat > "$ROMB/гл/г.конда" <<'KONDA'
 #содержит <stdio.h>
@@ -208,7 +206,7 @@ cat > "$ROMB/гл/г.конда" <<'KONDA'
     вернуть 0
 }
 KONDA
-printf '[проект]\nисходники = ["г.конда"]\n[сборка]\nзависимости = ["../а", "../б"]\n' > "$ROMB/гл/Konda.toml"
+printf '[проект]\n[сборка]\nзависимости = ["../а", "../б"]\n' > "$ROMB/гл/Konda.toml"
 ( cd "$ROMB/гл" && KONDA_TRANSPILER="$BIN" "$FRONT" -j8 >"$HERE/вывод/ромб.log" 2>&1 ) \
     || { cat "$HERE/вывод/ромб.log" >&2; fail "-j: ромб-сборка упала"; }
 grep -q "готово" "$HERE/вывод/ромб.log" || { cat "$HERE/вывод/ромб.log" >&2; fail "-j: ромб без 'готово'"; }
@@ -228,7 +226,7 @@ if command -v x86_64-linux-gnu-gcc >/dev/null 2>&1; then
     вернуть 0
 }
 KONDA
-    printf '[проект]\nисходники = ["п.конда"]\n[сборка]\nцели = ["хост", "x86_64-linux-gnu"]\n' > "$PT/Konda.toml"
+    printf '[проект]\n[сборка]\nцели = ["хост", "x86_64-linux-gnu"]\n' > "$PT/Konda.toml"
     ( cd "$PT" && KONDA_TRANSPILER="$BIN" "$FRONT" -j4 >"$HERE/вывод/парцели.log" 2>&1 ) \
         || { cat "$HERE/вывод/парцели.log" >&2; fail "-j: параллельные цели упали"; }
     grep -q "готово" "$HERE/вывод/парцели.log" || fail "-j: цели без 'готово'"
