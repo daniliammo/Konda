@@ -267,6 +267,19 @@ int скомпилировать_си(const char *путь_си, const char *п�
         }
 #else
         argv[n++] = "-shared";
+        // SONAME = базовое имя .so. Без него потребитель, линкующийся ПО ПУТИ
+        // (позиционный .so в argv), записал бы в NEEDED сам путь (напр.
+        // абсолютный build-путь) → в другой ФС (образ ОС) загрузчик его не найдёт
+        // → бинарник не стартует. С SONAME в NEEDED попадает лишь имя, которое
+        // резолвится по rpath/ld.so.cache (rootfs/lib64). Аналог install_name на
+        // macOS. Утечка намеренна (короткоживущий процесс).
+        char *soname = calloc(1, PATH_MAX + 64);
+        if (soname) {
+            const char *базовое = strrchr(путь_с_суффиксом, '/');
+            базовое = базовое ? базовое + 1 : путь_с_суффиксом;
+            snprintf(soname, PATH_MAX + 64, "-Wl,-soname,%s", базовое);
+            argv[n++] = soname;
+        }
 #endif
         argv[n++] = "-fPIC";
     }
