@@ -99,7 +99,8 @@ int скомпилировать_си(const char *путь_си, const char *п�
                        const char **доп_so, size_t число_so, int потоки,
                        const char *компилятор, int jemalloc, int символы,
                        int статический, int использует_embed,
-                       int предупреждения_как_ошибки, const char *march_флаг)
+                       int предупреждения_как_ошибки, const char *march_флаг,
+                       const ФлагиСи *флаги_си)
 {
     if (!компилятор || !компилятор[0]) компилятор = "cc";
     // jemalloc — только для исполняемых файлов: у .so аллокатор выбирает
@@ -143,7 +144,8 @@ int скомпилировать_си(const char *путь_си, const char *п�
     // +5 hardening (-Wl,-z,relro/now/noexecstack + stack-clash/protector-strong).
     size_t макс_арг = 25 + 2 * число_so + 5 + 1 /* --embed-dir */
                       + 6 /* -Werror + пять -Wno-… (защита clean-билда) */
-                      + 1 /* -march=<...> (целевой ISA-уровень) */;
+                      + 1 /* -march=<...> (целевой ISA-уровень) */
+                      + (флаги_си ? флаги_си->число_cflags + флаги_си->число_libs : 0);
     const char **argv = calloc(макс_арг, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); return 1; }
@@ -304,6 +306,9 @@ int скомпилировать_си(const char *путь_си, const char *п�
             argv[n++] = embed_dir;
         }
     }
+    // §129: пользовательские флаги C (-I/-D/pkg-config --cflags).
+    for (size_t i = 0; флаги_си && i < флаги_си->число_cflags; ++i)
+        argv[n++] = флаги_си->cflags[i];
     argv[n++] = "-o";
     argv[n++] = путь_с_суффиксом;
     argv[n++] = путь_си;
@@ -317,6 +322,9 @@ int скомпилировать_си(const char *путь_си, const char *п�
         argv[n++] = доп_so[i];
         argv[n++] = rpaths[i];
     }
+    // §129: библиотеки (pkg-config --libs) — после источника и .so.
+    for (size_t i = 0; флаги_си && i < флаги_си->число_libs; ++i)
+        argv[n++] = флаги_си->libs[i];
     // jemalloc — интерпозиция malloc/calloc/free. Ставим ПОСЛЕ источника/
     // библиотек, чтобы неопределённые calloc/free программы разрешились в
     // jemalloc, а не libc. Форма линковки — по хосту:
@@ -377,7 +385,8 @@ static int добавить_общие_флаги(const char **argv, int n, int 
                                 int предупреждения_как_ошибки, const char *march_флаг,
                                 int символы, const char *вкл_каталог,
                                 int использует_embed, int библиотека, int потоки,
-                                char *embed_dir_буф, size_t embed_cap)
+                                char *embed_dir_буф, size_t embed_cap,
+                                const ФлагиСи *флаги_си)
 {
     argv[n++] = "-std=gnu23";
     argv[n++] = "-Wall";
@@ -419,6 +428,8 @@ static int добавить_общие_флаги(const char **argv, int n, int 
             argv[n++] = embed_dir_буф;
         }
     }
+    for (size_t i = 0; флаги_си && i < флаги_си->число_cflags; ++i)   // §129
+        argv[n++] = флаги_си->cflags[i];
     return n;
 }
 
@@ -428,7 +439,8 @@ int скомпилировать_раздельно(const char (*пути_c)[512
                        const char **доп_so, size_t число_so, int потоки,
                        const char *компилятор, int jemalloc, int символы,
                        int статический, int использует_embed,
-                       int предупреждения_как_ошибки, const char *march_флаг)
+                       int предупреждения_как_ошибки, const char *march_флаг,
+                       const ФлагиСи *флаги_си)
 {
     if (!компилятор || !компилятор[0]) компилятор = "cc";
     int линк_jemalloc = jemalloc && !библиотека;
@@ -471,12 +483,14 @@ int скомпилировать_раздельно(const char (*пути_c)[512
             пропущено++;
             continue;
         }
-        const char *argv[40];
+        size_t макс_tu = 40 + (флаги_си ? флаги_си->число_cflags : 0);
+        const char **argv = calloc(макс_tu, sizeof(*argv));
+        if (!argv) { perror("calloc"); рез = 1; break; }
         int n = 0;
         argv[n++] = компилятор;
         n = добавить_общие_флаги(argv, n, релиз, предупреждения_как_ошибки, march_флаг,
                                  символы, вкл_каталог, использует_embed, библиотека,
-                                 потоки, embed_dir, sizeof(embed_dir));
+                                 потоки, embed_dir, sizeof(embed_dir), флаги_си);
         argv[n++] = "-c";
         argv[n++] = "-o";
         argv[n++] = пути_o[i];
@@ -484,6 +498,7 @@ int скомпилировать_раздельно(const char (*пути_c)[512
         argv[n] = nullptr;
         if (запустить_компилятор(компилятор, argv, n) != 0) рез = 1;
         else собрано++;
+        free(argv);
     }
     if (рез != 0) { free(пути_o); return 1; }
     printf("TU: собрано %d, пропущено %d (актуальные)\n", собрано, пропущено);
@@ -500,7 +515,8 @@ int скомпилировать_раздельно(const char (*пути_c)[512
     }
 
     // ── LTO-линковка всех .o ────────────────────────────────────────────────
-    size_t макс = 30 + число_tu + 2 * число_so + 2;
+    size_t макс = 30 + число_tu + 2 * число_so + 2
+                  + (флаги_си ? флаги_си->число_cflags + флаги_си->число_libs : 0);
     const char **argv = calloc(макс, sizeof(*argv));
     char (*rpaths)[PATH_MAX + 32] = число_so ? calloc(число_so, sizeof(*rpaths)) : nullptr;
     if (!argv || (число_so && !rpaths)) { perror("calloc"); free(argv); free(rpaths); free(пути_o); return 1; }
@@ -518,7 +534,7 @@ int скомпилировать_раздельно(const char (*пути_c)[512
     // Общие (оптимизация/ISA/hardening/pthread/flto) — на линковке те же (LTO).
     n = добавить_общие_флаги(argv, n, релиз, предупреждения_как_ошибки, march_флаг,
                              символы, вкл_каталог, использует_embed, библиотека,
-                             потоки, embed_dir2, sizeof(embed_dir2));
+                             потоки, embed_dir2, sizeof(embed_dir2), флаги_си);
     // Экспорт символов для читаемого бэктрейса — только линковка (см. скомпилировать_си).
     if (символы) {
 #if !defined(__APPLE__)
@@ -549,6 +565,8 @@ int скомпилировать_раздельно(const char (*пути_c)[512
         argv[n++] = доп_so[i];
         argv[n++] = rpaths[i];
     }
+    for (size_t i = 0; флаги_си && i < флаги_си->число_libs; ++i)   // §129
+        argv[n++] = флаги_си->libs[i];
     if (линк_jemalloc) {
 #if defined(__linux__)
         argv[n++] = статический ? "-ljemalloc" : "-l:libjemalloc.so.2";
