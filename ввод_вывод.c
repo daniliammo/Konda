@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -583,4 +584,16 @@ int скомпилировать_раздельно(const char (*пути_c)[512
     free(rpaths);
     free(пути_o);
     return рез;
+}
+
+void внутренняя_ошибка(const char *формат, ...)
+{
+    fflush(stdout);
+    fputs("Внутренняя ошибка транспилятора: ", stderr);
+    va_list аргументы;
+    va_start(аргументы, формат);
+    vfprintf(stderr, формат, аргументы);
+    va_end(аргументы);
+    fputs("\n(это ошибка Konda, а не программы — сообщите о ней)\n", stderr);
+    abort();
 }
