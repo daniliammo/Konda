@@ -126,7 +126,7 @@ $(TARGET): $(CLI_OBJ) $(LIB)
 	mkdir -p Собранное
 	$(CC) $(CFLAGS) $(CLI_OBJ) -L Собранное -lkonda-transpiler $(LDFLAGS) $(RPATH_FLAGS) -o $(TARGET)
 
-%.o: %.c транспилятор.h аст.h konda.h владение.h интерфейс.h макросы.h
+%.o: %.c транспилятор.h токены.def аст.h konda.h владение.h интерфейс.h макросы.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
@@ -137,5 +137,5 @@ PREFIX ?= /usr/local
 install: $(TARGET)
 	install -d $(PREFIX)/lib $(PREFIX)/include $(PREFIX)/bin
 	install -m 644 $(LIB) $(PREFIX)/lib/$(LIB_NAME)
-	install -m 644 konda.h транспилятор.h аст.h заголовки.h обобщения.h интерфейс.h макросы.h libkonda_ide.h $(PREFIX)/include/
+	install -m 644 konda.h транспилятор.h токены.def аст.h заголовки.h обобщения.h интерфейс.h макросы.h libkonda_ide.h $(PREFIX)/include/
 	install -m 755 $(TARGET) $(PREFIX)/bin/konda
