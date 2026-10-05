@@ -212,19 +212,8 @@ static void имя_в_си(const Кодоген *к, const char *начало, s
 
 static void тип_токена_в_си(ТипТокена t, int беззнаковый, char *out, size_t out_cap)
 {
-    switch (t) {
-        case ТОКЕН_ЦЕЛОЕ8:       snprintf(out, out_cap, беззнаковый ? "uint8_t"  : "int8_t");  break;
-        case ТОКЕН_ЦЕЛОЕ16:      snprintf(out, out_cap, беззнаковый ? "uint16_t" : "int16_t"); break;
-        case ТОКЕН_ЦЕЛОЕ32:      snprintf(out, out_cap, беззнаковый ? "uint32_t" : "int32_t"); break;
-        case ТОКЕН_ЦЕЛОЕ64:      snprintf(out, out_cap, беззнаковый ? "uint64_t" : "int64_t"); break;
-        case ТОКЕН_БАЙТ:         snprintf(out, out_cap, "uint8_t"); break;
-        case ТОКЕН_ВЕЩЕСТВЕННОЕ: snprintf(out, out_cap, "float");   break;
-        case ТОКЕН_ВЕЩЕСТВЕННОЕ64: snprintf(out, out_cap, "double"); break;
-        case ТОКЕН_ТИП_СИМВОЛ:   snprintf(out, out_cap, "char");    break;
-        case ТОКЕН_ЛОГИЧЕСКИЙ:   snprintf(out, out_cap, "bool");    break;
-        case ТОКЕН_НИЧЕГО:       snprintf(out, out_cap, "void");    break;
-        default:                 snprintf(out, out_cap, "int");     break;
-    }
+    const char *си = си_тип_примитива(t, беззнаковый);
+    snprintf(out, out_cap, "%s", си ? си : "int");
 }
 
 static void эмит(Кодоген *к, const char *текст)
@@ -4735,14 +4724,8 @@ static int это_ид_к(const Узел *у, const Токен *имя)
 static long размер_элемента_байт(ТипТокена тд, int указатели)
 {
     if (указатели > 0) return (long)sizeof(void *);
-    switch (тд) {
-        case ТОКЕН_ЦЕЛОЕ8: case ТОКЕН_БАЙТ: case ТОКЕН_ТИП_СИМВОЛ:
-        case ТОКЕН_ЛОГИЧЕСКИЙ:       return 1;
-        case ТОКЕН_ЦЕЛОЕ16:          return 2;
-        case ТОКЕН_ЦЕЛОЕ32: case ТОКЕН_ВЕЩЕСТВЕННОЕ:   return 4;
-        case ТОКЕН_ЦЕЛОЕ64: case ТОКЕН_ВЕЩЕСТВЕННОЕ64: return 8;
-        default:                     return 0;
-    }
+    const ПримитивныйТип *примитив = найти_примитив(тд);
+    return примитив ? примитив->размер : 0;
 }
 
 // Пытается распарсить неотрицательный десятичный литерал (токен не

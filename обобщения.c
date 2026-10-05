@@ -61,21 +61,16 @@ static void суффикс_типа(const Узел *та, char *out, size_t cap)
 {
     char базовый[128];
     switch (та->тип_данных) {
-        case ТОКЕН_ЦЕЛОЕ8:  snprintf(базовый, sizeof базовый, "целое8");  break;
-        case ТОКЕН_ЦЕЛОЕ16: snprintf(базовый, sizeof базовый, "целое16"); break;
-        case ТОКЕН_ЦЕЛОЕ32: snprintf(базовый, sizeof базовый, "целое32"); break;
-        case ТОКЕН_ЦЕЛОЕ64: snprintf(базовый, sizeof базовый, "целое64"); break;
-        case ТОКЕН_БАЙТ:         snprintf(базовый, sizeof базовый, "байт"); break;
-        case ТОКЕН_ВЕЩЕСТВЕННОЕ:  snprintf(базовый, sizeof базовый, "вещественное"); break;
-        case ТОКЕН_ВЕЩЕСТВЕННОЕ64: snprintf(базовый, sizeof базовый, "вещественное64"); break;
-        case ТОКЕН_ТИП_СИМВОЛ:   snprintf(базовый, sizeof базовый, "символ"); break;
-        case ТОКЕН_ЛОГИЧЕСКИЙ:   snprintf(базовый, sizeof базовый, "логический"); break;
         case ТОКЕН_СТРУКТУРА:
         case ТОКЕН_ПЕРЕЧИСЛЕНИЕ:
             snprintf(базовый, sizeof базовый, "%.*s",
                      (int)та->имя_типа.длина, та->имя_типа.начало);
             break;
-        default: snprintf(базовый, sizeof базовый, "тип"); break;
+        default: {
+            const ПримитивныйТип *примитив = найти_примитив(та->тип_данных);
+            snprintf(базовый, sizeof базовый, "%s", примитив ? примитив->имя : "тип");
+            break;
+        }
     }
     char укз[24] = {0};
     for (int i = 0; i < та->указатели && i < 8; ++i) memcpy(укз + i * 3, "_ук", 3);
